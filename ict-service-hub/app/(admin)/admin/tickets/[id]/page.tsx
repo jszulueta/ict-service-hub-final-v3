@@ -17,7 +17,8 @@ const ADMIN_NAV = [
   { href: '/admin/spam',    label: 'Spam'      },
 ]
 
-export default async function AdminTicketDetailPage({ params }: { params: { id: string } }) {
+export default async function AdminTicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
@@ -28,7 +29,7 @@ export default async function AdminTicketDetailPage({ params }: { params: { id: 
   if (!currentUser || !['ict_staff', 'ict_admin', 'super_admin'].includes(currentUser.role)) redirect('/dashboard')
 
   const { data: ticketData } = await supabase
-    .from('tickets').select('*').eq('id', params.id).single()
+    .from('tickets').select('*').eq('id', id).single()
   const ticket = ticketData as Ticket | null
   if (!ticket) notFound()
 
@@ -45,12 +46,12 @@ export default async function AdminTicketDetailPage({ params }: { params: { id: 
   // Comments (all including internal)
   const { data: commentsData } = await supabase
     .from('comments').select('*, author:profiles!comments_author_id_fkey(full_name, role)')
-    .eq('ticket_id', params.id).order('created_at', { ascending: true })
+    .eq('ticket_id', id).order('created_at', { ascending: true })
   const comments = (commentsData || []) as (Comment & { author: { full_name: string; role: string } })[]
 
   // Status history
   const { data: historyData } = await supabase
-    .from('ticket_status_history').select('*').eq('ticket_id', params.id).order('created_at', { ascending: true })
+    .from('ticket_status_history').select('*').eq('ticket_id', id).order('created_at', { ascending: true })
 
   const assignee = ticket.assigned_to ? staff.find((s) => s.id === ticket.assigned_to) : null
 

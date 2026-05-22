@@ -176,22 +176,64 @@ export async function updateTicket(
     const existing = existingData as Pick<Ticket, 'id' | 'status' | 'assigned_to' | 'requester_id' | 'ticket_number' | 'resolved_at' | 'closed_at'> | null
     if (!existing) return { success: false, error: 'Ticket not found.' }
 
-    const updateData: Record<string, unknown> = { ...parsed.data }
+    // Strip undefined values — Supabase JS can behave unexpectedly with undefined keys
+    const updateData: Record<string, unknown> = Object.fromEntries(
+      Object.entries(parsed.data).filter(([, v]) => v !== undefined)
+    )
     if (parsed.data.status === 'resolved' && !existing.resolved_at) updateData.resolved_at = new Date().toISOString()
     if (parsed.data.status === 'closed'   && !existing.closed_at)   updateData.closed_at   = new Date().toISOString()
 
-    const { error } = await supabase.from('tickets').update(updateData).eq('id', ticketId)
-    if (error) return { success: false, error: 'Failed to update ticket.' }
+    // Use admin client so RLS policies don't silently block status column
+    // updates while allowing priority/assigned_to. Role is already verified
+    // above via getAdminUser().
+    const updateAdminClient = createSupabaseAdminClient()
+    const { error } = await updateAdminClient.from('tickets').update(updateData).eq('id', ticketId)
+    if (error) {
+      console.error('[updateTicket] Update error:', error.message, error.details, error.hint)
+      return { success: false, error: 'Failed to update ticket.' }
+    }
 
+    // Notify requester on status change
     try {
       const adminClient = createSupabaseAdminClient()
       if (parsed.data.status && parsed.data.status !== existing.status) {
+      const statusLabels: Record<string, string> = {
+        pending:     'Pending',
+        open:        'Open',
+        in_progress: 'In Progress',
+        on_hold:     'On Hold',
+        resolved:    'Resolved',
+        closed:      'Closed',
+      }
+      const statusLabel = statusLabels[parsed.data.status] ?? parsed.data.status
+
+      const notifType =
+        parsed.data.status === 'resolved' ? 'ticket_resolved' :
+        parsed.data.status === 'closed'   ? 'ticket_closed'   :
+        parsed.data.status === 'open'     ? 'ticket_reopened' :
+        'ticket_updated'
+
         await adminClient.from('notifications').insert({
           user_id:   existing.requester_id,
           ticket_id: ticketId,
-          type:      'status_changed' as const,
+          type:      notifType,
           title:     'Ticket Status Updated',
-          message:   `Your ticket ${existing.ticket_number} status changed to "${parsed.data.status.replace('_', ' ')}"`,
+          message:   `Your ticket ${existing.ticket_number} status has been updated to "${statusLabel}".`,
+      })
+    }
+
+    // Notify requester on first assignment
+    if (
+      parsed.data.assigned_to !== undefined &&
+      parsed.data.assigned_to !== existing.assigned_to &&
+      parsed.data.assigned_to !== null
+    ) {
+      await adminClient.from('notifications').insert({
+        user_id:   existing.requester_id,
+        ticket_id: ticketId,
+        type:      'ticket_assigned',
+        title:     'Ticket Assigned',
+        message:   `Your ticket ${existing.ticket_number} has been assigned to a technician and is being reviewed.`,
         })
       }
       await adminClient.from('audit_logs').insert({
@@ -262,6 +304,15 @@ export async function addComment(
       return { success: false, error: 'Only ICT staff can post internal notes.' }
     }
 
+    // Fetch the ticket so we can notify the requester
+    const { data: ticketData } = await supabase
+      .from('tickets')
+      .select('requester_id, ticket_number')
+      .eq('id', parsed.data.ticket_id)
+      .single()
+
+    const ticketForComment = ticketData as Pick<Ticket, 'requester_id' | 'ticket_number'> | null
+
     const { data: commentData, error } = await supabase
       .from('comments')
       .insert({
@@ -275,6 +326,22 @@ export async function addComment(
 
     const comment = commentData as { id: string } | null
     if (error || !comment) return { success: false, error: 'Failed to post comment.' }
+
+    // Notify the requester when ICT staff posts a public (non-internal) comment
+    const isStaff = ['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)
+    const isPublicStaffComment = isStaff && !parsed.data.is_internal
+    const commentAuthorIsRequester = ticketForComment?.requester_id === session.user.id
+
+    if (isPublicStaffComment && ticketForComment && !commentAuthorIsRequester) {
+      const adminClient = createSupabaseAdminClient()
+      await adminClient.from('notifications').insert({
+        user_id:   ticketForComment.requester_id,
+        ticket_id: parsed.data.ticket_id,
+        type:      'comment_added',
+        title:     'New Comment on Your Ticket',
+        message:   `The ICT team added a comment on ticket ${ticketForComment.ticket_number}.`,
+      })
+    }
 
     revalidatePath(`/tickets/${parsed.data.ticket_id}`)
     revalidatePath(`/admin/tickets/${parsed.data.ticket_id}`)
