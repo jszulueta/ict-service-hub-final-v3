@@ -10,13 +10,13 @@ export const metadata = { title: 'Admin Dashboard' }
 
 export default async function AdminDashboardPage() {
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/auth/login')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   const { data: profileData } = await supabase
     .from('profiles')
     .select('role, full_name')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   const profile = profileData as Pick<Profile, 'role' | 'full_name'> | null

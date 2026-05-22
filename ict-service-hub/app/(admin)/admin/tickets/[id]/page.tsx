@@ -19,11 +19,11 @@ const ADMIN_NAV = [
 
 export default async function AdminTicketDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/auth/login')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   const { data: profileData } = await supabase
-    .from('profiles').select('id, role, full_name').eq('id', session.user.id).single()
+    .from('profiles').select('id, role, full_name').eq('id', user.id).single()
   const currentUser = profileData as Pick<Profile, 'id' | 'role' | 'full_name'> | null
   if (!currentUser || !['ict_staff', 'ict_admin', 'super_admin'].includes(currentUser.role)) redirect('/dashboard')
 

@@ -1,30 +1,24 @@
-// middleware.ts — Root of Next.js project
-// ICT Service Hub — Diocese of Kalookan
-// RBAC + Rate Limiting + Route Protection
-
+// middleware.ts
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-// ============================================================
-// ROUTE CONFIGURATION
-// ============================================================
+// ── Route configuration ──────────────────────────────────────────────────────
 
-const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/auth/verify']
-const USER_ROUTES = ['/dashboard', '/tickets']
-const ADMIN_ROUTES = ['/admin']
+const PUBLIC_ROUTES = [
+  '/',
+  '/auth/login',
+  '/auth/signup',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/callback',
+  '/auth/suspended',
+  '/auth/verify',
+]
 
-// Roles allowed per route group
-const ROUTE_ROLES: Record<string, string[]> = {
-  '/admin': ['ict_staff', 'ict_admin', 'super_admin'],
-  '/dashboard': ['requester', 'ict_staff', 'ict_admin', 'super_admin'],
-  '/tickets': ['requester', 'ict_staff', 'ict_admin', 'super_admin'],
-}
+const ADMIN_ROLES = ['ict_staff', 'ict_admin', 'super_admin']
 
-// ============================================================
-// IN-MEMORY RATE LIMITER (Edge-compatible, no Redis needed)
-// For production, swap with Upstash Redis
-// ============================================================
+// ── In-memory rate limiter ───────────────────────────────────────────────────
 
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
 
@@ -38,8 +32,8 @@ function getRateLimitKey(req: NextRequest): string {
 
 function checkRateLimit(
   key: string,
-  limit: number = 60,
-  windowMs: number = 60_000
+  limit = 60,
+  windowMs = 60_000
 ): { allowed: boolean; remaining: number; resetAt: number } {
   const now = Date.now()
   const entry = rateLimitStore.get(key)
@@ -57,7 +51,6 @@ function checkRateLimit(
   return { allowed: true, remaining: limit - entry.count, resetAt: entry.resetAt }
 }
 
-// Clean up old entries periodically (Edge-safe)
 function pruneRateLimitStore() {
   const now = Date.now()
   for (const [key, entry] of rateLimitStore.entries()) {
@@ -65,26 +58,19 @@ function pruneRateLimitStore() {
   }
 }
 
-// ============================================================
-// MIDDLEWARE
-// ============================================================
+// ── Middleware ───────────────────────────────────────────────────────────────
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   const res = NextResponse.next()
 
-  // Prune store occasionally
   if (Math.random() < 0.01) pruneRateLimitStore()
 
-  // ---- Rate Limiting ----
   const rateLimitKey = getRateLimitKey(req)
-
-  // Stricter limit on auth endpoints
   const isAuthRoute = pathname.startsWith('/auth')
   const limit = isAuthRoute ? 15 : 60
-  const windowMs = isAuthRoute ? 60_000 : 60_000
 
-  const { allowed, remaining, resetAt } = checkRateLimit(rateLimitKey, limit, windowMs)
+  const { allowed, remaining, resetAt } = checkRateLimit(rateLimitKey, limit)
 
   if (!allowed) {
     return new NextResponse(
@@ -105,18 +91,15 @@ export async function middleware(req: NextRequest) {
     )
   }
 
-  // Add rate limit headers to response
   res.headers.set('X-RateLimit-Limit', String(limit))
   res.headers.set('X-RateLimit-Remaining', String(remaining))
   res.headers.set('X-RateLimit-Reset', String(Math.ceil(resetAt / 1000)))
 
-  // ---- Public Routes: Allow through ----
   const isPublic = PUBLIC_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   )
   if (isPublic) return res
 
-  // ---- Supabase Auth Session ----
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -135,26 +118,21 @@ export async function middleware(req: NextRequest) {
     }
   )
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // ---- Not authenticated: redirect to login ----
-  if (!session) {
+  if (!user) {
     const loginUrl = req.nextUrl.clone()
     loginUrl.pathname = '/auth/login'
     loginUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // ---- Fetch user role from profile ----
   const { data: profile } = await supabase
     .from('profiles')
     .select('role, is_active, is_suspended')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
-  // ---- Suspended or inactive account ----
   if (!profile || !profile.is_active || profile.is_suspended) {
     const suspendedUrl = req.nextUrl.clone()
     suspendedUrl.pathname = '/auth/suspended'
@@ -163,36 +141,22 @@ export async function middleware(req: NextRequest) {
 
   const userRole = profile.role as string
 
-  // ---- Admin route access control ----
-  const isAdminRoute = ADMIN_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  )
-
-  if (isAdminRoute) {
-    const allowedRoles = ROUTE_ROLES['/admin'] || []
-    if (!allowedRoles.includes(userRole)) {
-      // Requester trying to access admin — redirect to their dashboard
-      const redirectUrl = req.nextUrl.clone()
-      redirectUrl.pathname = '/dashboard'
-      return NextResponse.redirect(redirectUrl)
-    }
+  const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/')
+  if (isAdminRoute && !ADMIN_ROLES.includes(userRole)) {
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = '/dashboard'
+    return NextResponse.redirect(redirectUrl)
   }
 
-  // ---- Staff trying to access user-only pages ----
-  // (Staff always redirected to admin if they go to /dashboard)
-  if (
-    pathname === '/dashboard' &&
-    ['ict_staff', 'ict_admin', 'super_admin'].includes(userRole)
-  ) {
+  if (pathname === '/dashboard' && ADMIN_ROLES.includes(userRole)) {
     const adminUrl = req.nextUrl.clone()
     adminUrl.pathname = '/admin'
     return NextResponse.redirect(adminUrl)
   }
 
-  // ---- Attach user info to headers for server components ----
-  res.headers.set('x-user-id', session.user.id)
+  res.headers.set('x-user-id', user.id)
   res.headers.set('x-user-role', userRole)
-  res.headers.set('x-user-email', session.user.email || '')
+  res.headers.set('x-user-email', user.email || '')
 
   return res
 }

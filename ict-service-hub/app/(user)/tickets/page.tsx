@@ -10,13 +10,13 @@ export const metadata = { title: 'My Tickets' }
 
 export default async function TicketsPage() {
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/auth/login')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   const { data: tickets } = await supabase
     .from('tickets')
     .select('id, ticket_number, title, category, status, priority, created_at, updated_at, event_date')
-    .eq('requester_id', session.user.id)
+    .eq('requester_id', user.id)
     .order('created_at', { ascending: false })
 
   const myTickets = (tickets || []) as Ticket[]

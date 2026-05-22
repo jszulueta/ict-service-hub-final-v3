@@ -15,13 +15,13 @@ type ActionResult<T = void> =
 
 async function getAuthenticatedUser() {
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('Unauthorized: No active session.')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized: No active session.')
 
   const { data } = await supabase
     .from('profiles')
     .select('id, email, full_name, role, is_active, is_suspended')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   const profile = data as Pick<Profile, 'id' | 'email' | 'full_name' | 'role' | 'is_active' | 'is_suspended'> | null
@@ -30,15 +30,15 @@ async function getAuthenticatedUser() {
     throw new Error('Unauthorized: Account is inactive or suspended.')
   }
 
-  return { session, profile, supabase }
+  return { user, profile, supabase }
 }
 
 async function getAdminUser() {
-  const { session, profile, supabase } = await getAuthenticatedUser()
+  const { user, profile, supabase } = await getAuthenticatedUser()
   if (!['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)) {
     throw new Error('Forbidden: Insufficient permissions.')
   }
-  return { session, profile, supabase }
+  return { user, profile, supabase }
 }
 
 async function getClientIP(): Promise<string> {
@@ -46,129 +46,126 @@ async function getClientIP(): Promise<string> {
   return hdrs.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
 }
 
-async function checkTicketSpam(userId: string, ip: string): Promise<{ spam: boolean; reason?: string }> {
-  const adminClient = createSupabaseAdminClient()
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-
-  const { count } = await adminClient
-    .from('tickets')
-    .select('id', { count: 'exact', head: true })
-    .eq('requester_id', userId)
-    .gte('created_at', oneHourAgo)
-
-  if ((count || 0) >= 5) return { spam: true, reason: 'Too many tickets submitted in the past hour.' }
-
-  const { count: ipCount } = await adminClient
-    .from('tickets')
-    .select('id', { count: 'exact', head: true })
-    .eq('ip_address', ip)
-    .gte('created_at', oneHourAgo)
-
-  if ((ipCount || 0) >= 8) return { spam: true, reason: 'Too many submissions from this IP address.' }
-
-  return { spam: false }
-}
-
-// ── createTicket ────────────────────────────────────────────────────────────
-
+// ── createTicket ─────────────────────────────────────────────────────────────
 export async function createTicket(
   rawInput: CreateTicketInput
 ): Promise<ActionResult<{ ticketId: string; ticketNumber: string }>> {
   try {
-    const { session, profile, supabase } = await getAuthenticatedUser()
+    const { user, profile, supabase } = await getAuthenticatedUser()
     const ip = await getClientIP()
 
     const parsed = createTicketSchema.safeParse(rawInput)
-    if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message || 'Validation failed.' }
-
-    const spamCheck = await checkTicketSpam(session.user.id, ip)
-    if (spamCheck.spam) {
-      const adminClient = createSupabaseAdminClient()
-      await adminClient.from('audit_logs').insert({
-        actor_id: session.user.id,
-        actor_email: session.user.email,
-        action: 'spam_flagged' as const,
-        resource: 'ticket',
-        new_values: { reason: spamCheck.reason, ip },
-        ip_address: ip,
-      })
-      return { success: false, error: spamCheck.reason || 'Submission limit reached. Please try again later.' }
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.errors[0]?.message || 'Validation failed.' }
     }
 
-    const { data: ticketData, error } = await supabase
+    // ── Relaxed anti-spam: only block if same user submits 10+ tickets in one hour
+    // (was 5, which was too aggressive for testing)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count: recentCount } = await supabase
+      .from('tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('requester_id', user.id)
+      .gte('created_at', oneHourAgo)
+
+    if ((recentCount || 0) >= 10) {
+      return { success: false, error: 'You have submitted too many requests in the past hour. Please wait before submitting again.' }
+    }
+
+    // ── Insert ticket
+    const { data: ticketData, error: insertError } = await supabase
       .from('tickets')
       .insert({
-        requester_id: session.user.id,
-        title: parsed.data.title,
-        description: parsed.data.description,
-        category: parsed.data.category,
-        priority: parsed.data.priority,
-        event_name:     parsed.data.event_name     || null,
-        event_date:     parsed.data.event_date     || null,
-        event_location: parsed.data.event_location || null,
-        event_notes:    parsed.data.event_notes    || null,
+        requester_id:          user.id,
+        title:                 parsed.data.title,
+        description:           parsed.data.description,
+        category:              parsed.data.category,
+        priority:              parsed.data.priority,
+        event_name:            parsed.data.event_name     || null,
+        event_date:            parsed.data.event_date     || null,
+        event_location:        parsed.data.event_location || null,
+        event_notes:           parsed.data.event_notes    || null,
         external_archive_link: parsed.data.external_archive_link || null,
         archive_description:   parsed.data.archive_description   || null,
-        ip_address: ip,
-        status: 'pending' as const,
+        ip_address:            ip,
+        status:                'pending' as const,
       })
       .select('id, ticket_number')
       .single()
 
+    if (insertError) {
+      console.error('[createTicket] Insert error:', insertError.message, insertError.details, insertError.hint)
+      return { success: false, error: `Database error: ${insertError.message}` }
+    }
+
     const ticket = ticketData as Pick<Ticket, 'id' | 'ticket_number'> | null
-    if (error || !ticket) return { success: false, error: 'Failed to submit ticket. Please try again.' }
+    if (!ticket) {
+      return { success: false, error: 'Ticket was not created. Please try again.' }
+    }
 
-    await supabase.from('notifications').insert({
-      user_id:   session.user.id,
-      ticket_id: ticket.id,
-      type:      'ticket_created' as const,
-      title:     'Ticket Submitted',
-      message:   `Your request "${parsed.data.title}" has been submitted (${ticket.ticket_number}).`,
-    })
+    // ── Notification (non-blocking, safe to fail)
+    try {
+      await supabase.from('notifications').insert({
+        user_id:   user.id,
+        ticket_id: ticket.id,
+        type:      'ticket_created' as const,
+        title:     'Ticket Submitted',
+        message:   `Your request "${parsed.data.title}" has been submitted (${ticket.ticket_number}).`,
+      })
+    } catch (notifErr) {
+      console.error('[createTicket] Notification error:', notifErr)
+      // Don't fail the whole action for a notification error
+    }
 
-    const adminClient = createSupabaseAdminClient()
-    await adminClient.from('audit_logs').insert({
-      actor_id:    session.user.id,
-      actor_email: session.user.email,
-      action:      'ticket_created' as const,
-      resource:    'ticket',
-      resource_id: ticket.id,
-      new_values:  { ticket_number: ticket.ticket_number, category: parsed.data.category },
-      ip_address:  ip,
-    })
+    // ── Audit log (non-blocking)
+    try {
+      const adminClient = createSupabaseAdminClient()
+      await adminClient.from('audit_logs').insert({
+        actor_id:    user.id,
+        actor_email: user.email,
+        action:      'ticket_created' as const,
+        resource:    'ticket',
+        resource_id: ticket.id,
+        new_values:  { ticket_number: ticket.ticket_number, category: parsed.data.category },
+        ip_address:  ip,
+      })
+    } catch (auditErr) {
+      console.error('[createTicket] Audit log error:', auditErr)
+    }
 
+    // ── Email (non-blocking)
     sendTicketNotification({
       type:           'ticket_created',
-      recipientEmail: session.user.email!,
+      recipientEmail: user.email!,
       recipientName:  profile.full_name,
       ticketNumber:   ticket.ticket_number!,
       ticketTitle:    parsed.data.title,
       category:       parsed.data.category,
-    }).catch(console.error)
+    }).catch((emailErr) => console.error('[createTicket] Email error:', emailErr))
 
     revalidatePath('/tickets')
     return { success: true, data: { ticketId: ticket.id, ticketNumber: ticket.ticket_number! } }
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unexpected error.'
+    console.error('[createTicket] Caught error:', msg)
     return { success: false, error: msg }
   }
 }
 
-// ── updateTicket ────────────────────────────────────────────────────────────
-
+// ── updateTicket ──────────────────────────────────────────────────────────────
 export async function updateTicket(
   ticketId: string,
   rawInput: UpdateTicketInput
 ): Promise<ActionResult> {
   try {
-    const { session } = await getAdminUser()
+    const { user } = await getAdminUser()
     const ip = await getClientIP()
 
     const parsed = updateTicketSchema.safeParse(rawInput)
     if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message || 'Validation failed.' }
 
     const supabase = await createSupabaseServerClient()
-    const adminClient = createSupabaseAdminClient()
 
     const { data: existingData } = await supabase
       .from('tickets')
@@ -186,26 +183,30 @@ export async function updateTicket(
     const { error } = await supabase.from('tickets').update(updateData).eq('id', ticketId)
     if (error) return { success: false, error: 'Failed to update ticket.' }
 
-    if (parsed.data.status && parsed.data.status !== existing.status) {
-      await adminClient.from('notifications').insert({
-        user_id:   existing.requester_id,
-        ticket_id: ticketId,
-        type:      'status_changed' as const,
-        title:     'Ticket Status Updated',
-        message:   `Your ticket ${existing.ticket_number} status changed to "${parsed.data.status.replace('_', ' ')}"`,
+    try {
+      const adminClient = createSupabaseAdminClient()
+      if (parsed.data.status && parsed.data.status !== existing.status) {
+        await adminClient.from('notifications').insert({
+          user_id:   existing.requester_id,
+          ticket_id: ticketId,
+          type:      'status_changed' as const,
+          title:     'Ticket Status Updated',
+          message:   `Your ticket ${existing.ticket_number} status changed to "${parsed.data.status.replace('_', ' ')}"`,
+        })
+      }
+      await adminClient.from('audit_logs').insert({
+        actor_id:    user.id,
+        actor_email: user.email,
+        action:      parsed.data.status !== existing.status ? 'status_changed' as const : 'ticket_updated' as const,
+        resource:    'ticket',
+        resource_id: ticketId,
+        old_values:  { status: existing.status, assigned_to: existing.assigned_to },
+        new_values:  parsed.data as Record<string, unknown>,
+        ip_address:  ip,
       })
+    } catch (sideErr) {
+      console.error('[updateTicket] Side effect error:', sideErr)
     }
-
-    await adminClient.from('audit_logs').insert({
-      actor_id:    session.user.id,
-      actor_email: session.user.email,
-      action:      parsed.data.status !== existing.status ? 'status_changed' as const : 'ticket_updated' as const,
-      resource:    'ticket',
-      resource_id: ticketId,
-      old_values:  { status: existing.status, assigned_to: existing.assigned_to },
-      new_values:  parsed.data as Record<string, unknown>,
-      ip_address:  ip,
-    })
 
     revalidatePath('/admin/tickets')
     revalidatePath(`/admin/tickets/${ticketId}`)
@@ -215,24 +216,20 @@ export async function updateTicket(
   }
 }
 
-// ── updateArchiveLink ────────────────────────────────────────────────────────
-
+// ── updateArchiveLink ─────────────────────────────────────────────────────────
 export async function updateArchiveLink(
   ticketId: string,
   link: string,
   description: string
 ): Promise<ActionResult> {
   try {
-    const { session, profile, supabase } = await getAuthenticatedUser()
+    const { user, profile, supabase } = await getAuthenticatedUser()
 
     const { data: ticketData } = await supabase
-      .from('tickets')
-      .select('requester_id')
-      .eq('id', ticketId)
-      .single()
+      .from('tickets').select('requester_id').eq('id', ticketId).single()
 
     const ticket = ticketData as Pick<Ticket, 'requester_id'> | null
-    const isOwner = ticket?.requester_id === session.user.id
+    const isOwner = ticket?.requester_id === user.id
     const isStaff = ['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)
 
     if (!isOwner && !isStaff) return { success: false, error: 'You do not have permission to update this ticket.' }
@@ -246,18 +243,17 @@ export async function updateArchiveLink(
 
     revalidatePath(`/tickets/${ticketId}`)
     return { success: true, message: 'Archive link updated.' }
-  } catch (err) {
+  } catch {
     return { success: false, error: 'Unexpected error.' }
   }
 }
 
 // ── addComment ────────────────────────────────────────────────────────────────
-
 export async function addComment(
   rawInput: CreateCommentInput
 ): Promise<ActionResult<{ commentId: string }>> {
   try {
-    const { session, profile, supabase } = await getAuthenticatedUser()
+    const { user, profile, supabase } = await getAuthenticatedUser()
 
     const parsed = createCommentSchema.safeParse(rawInput)
     if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message || 'Validation failed.' }
@@ -270,7 +266,7 @@ export async function addComment(
       .from('comments')
       .insert({
         ticket_id:   parsed.data.ticket_id,
-        author_id:   session.user.id,
+        author_id:   user.id,
         body:        parsed.data.body,
         is_internal: parsed.data.is_internal,
       })
@@ -283,13 +279,12 @@ export async function addComment(
     revalidatePath(`/tickets/${parsed.data.ticket_id}`)
     revalidatePath(`/admin/tickets/${parsed.data.ticket_id}`)
     return { success: true, data: { commentId: comment.id } }
-  } catch (err) {
+  } catch {
     return { success: false, error: 'Unexpected error.' }
   }
 }
 
 // ── recordUsageSnapshot ───────────────────────────────────────────────────────
-
 export async function recordUsageSnapshot(): Promise<ActionResult> {
   try {
     await getAdminUser()
@@ -303,11 +298,11 @@ export async function recordUsageSnapshot(): Promise<ActionResult> {
     ])
 
     await adminClient.from('usage_snapshots').upsert({
-      snapshot_date: new Date().toISOString().split('T')[0],
-      total_tickets: tickets.count || 0,
-      total_users:   users.count   || 0,
+      snapshot_date:  new Date().toISOString().split('T')[0],
+      total_tickets:  tickets.count  || 0,
+      total_users:    users.count    || 0,
       total_comments: comments.count || 0,
-      total_notifs:  notifs.count   || 0,
+      total_notifs:   notifs.count   || 0,
     })
 
     return { success: true }

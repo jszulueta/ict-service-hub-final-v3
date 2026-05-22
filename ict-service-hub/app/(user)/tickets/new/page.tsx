@@ -9,8 +9,8 @@ export const metadata = { title: 'New Service Request' }
 
 export default async function NewTicketPage() {
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/auth/login')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   return (
     <div className="min-h-screen bg-liturgical-white">

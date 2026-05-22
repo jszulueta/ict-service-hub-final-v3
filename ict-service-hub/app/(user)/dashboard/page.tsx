@@ -10,13 +10,13 @@ export const metadata = { title: 'My Dashboard' }
 
 export default async function UserDashboardPage() {
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/auth/login')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   const { data: profileData } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   const profile = profileData as Profile | null
@@ -25,14 +25,14 @@ export default async function UserDashboardPage() {
   const { data: ticketsData } = await supabase
     .from('tickets')
     .select('id, ticket_number, title, category, status, priority, created_at, updated_at')
-    .eq('requester_id', session.user.id)
+    .eq('requester_id', user.id)
     .order('created_at', { ascending: false })
     .limit(20)
 
   const { data: notifsData, count: unreadCount } = await supabase
     .from('notifications')
     .select('*', { count: 'exact' })
-    .eq('user_id', session.user.id)
+    .eq('user_id', user.id)
     .eq('is_read', false)
     .order('created_at', { ascending: false })
     .limit(5)

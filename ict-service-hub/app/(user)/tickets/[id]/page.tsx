@@ -9,8 +9,8 @@ export const metadata = { title: 'Ticket Details' }
 
 export default async function TicketDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/auth/login')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   // Fetch ticket (RLS ensures user can only see their own)
   const { data: ticket } = await supabase

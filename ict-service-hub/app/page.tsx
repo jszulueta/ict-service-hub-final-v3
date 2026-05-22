@@ -5,14 +5,14 @@ import type { Profile } from '@/types/database'
 
 export default async function RootPage() {
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!session) redirect('/auth/login')
+  if (!user) redirect('/auth/login')
 
   const { data } = await supabase
     .from('profiles')
     .select('role, is_active, is_suspended')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   const profile = data as Pick<Profile, 'role' | 'is_active' | 'is_suspended'> | null

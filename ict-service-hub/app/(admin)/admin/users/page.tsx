@@ -35,11 +35,11 @@ export default async function AdminUsersPage({
   searchParams: { role?: string; q?: string }
 }) {
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/auth/login')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   const { data: profileData } = await supabase
-    .from('profiles').select('role').eq('id', session.user.id).single()
+    .from('profiles').select('role').eq('id', user.id).single()
   const currentUser = profileData as Pick<Profile, 'role'> | null
   if (!currentUser || !['ict_admin', 'super_admin'].includes(currentUser.role)) redirect('/admin')
 
