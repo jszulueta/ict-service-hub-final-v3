@@ -3,9 +3,12 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { EmptyState, PageHeader } from '@/components/ui'
 import type { Profile, Notification } from '@/types/database'
 
 export const metadata = { title: 'Notifications' }
+
+// ─── Server Actions ───────────────────────────────────────────────────────────
 
 async function markOneAsRead(formData: FormData) {
   'use server'
@@ -27,6 +30,22 @@ async function markAllAsRead(formData: FormData) {
   revalidatePath('/notifications')
 }
 
+async function viewTicket(formData: FormData) {
+  'use server'
+  const ticketId = formData.get('ticketId') as string
+  const userId   = formData.get('userId')   as string
+  const supabase = await createSupabaseServerClient()
+  await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('ticket_id', ticketId)
+    .eq('user_id', userId)
+    .eq('is_read', false)
+  redirect(`/tickets/${ticketId}`)
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function formatRelativeTime(isoString: string): string {
   const now = new Date()
   const date = new Date(isoString)
@@ -42,26 +61,32 @@ function formatRelativeTime(isoString: string): string {
   return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
 }
 
+// Keyed to the exact `type` values inserted in lib/actions/tickets.ts:
+//   createTicket  → 'ticket_created'
+//   updateTicket  → 'status_changed'  (when status changes)
+// addComment creates no notification — Comments tab is therefore not shown.
 const TYPE_META: Record<string, { icon: string; dotColor: string; labelColor: string }> = {
-  ticket_created:  { icon: '📋', dotColor: 'bg-blue-500',    labelColor: 'text-blue-700'    },
-  ticket_updated:  { icon: '🔄', dotColor: 'bg-amber-500',   labelColor: 'text-amber-700'   },
-  ticket_assigned: { icon: '👤', dotColor: 'bg-violet-500',  labelColor: 'text-violet-700'  },
-  ticket_resolved: { icon: '✅', dotColor: 'bg-emerald-500', labelColor: 'text-emerald-700' },
+  ticket_created:  { icon: '📋', dotColor: 'bg-blue-400',    labelColor: 'text-blue-700'    },
+  status_changed:  { icon: '🔄', dotColor: 'bg-gold-500',    labelColor: 'text-gold-700'    },
+  ticket_assigned: { icon: '👤', dotColor: 'bg-violet-400',  labelColor: 'text-violet-700'  },
+  ticket_resolved: { icon: '✅', dotColor: 'bg-emerald-400', labelColor: 'text-emerald-700' },
   ticket_closed:   { icon: '🔒', dotColor: 'bg-slate-400',   labelColor: 'text-slate-600'   },
-  ticket_reopened: { icon: '🔓', dotColor: 'bg-rose-500',    labelColor: 'text-rose-700'    },
-  comment_added:   { icon: '💬', dotColor: 'bg-sky-500',     labelColor: 'text-sky-700'     },
+  ticket_reopened: { icon: '🔓', dotColor: 'bg-rose-400',    labelColor: 'text-rose-700'    },
 }
-const FALLBACK_META = { icon: '🔔', dotColor: 'bg-slate-400', labelColor: 'text-slate-700' }
+const FALLBACK_META = { icon: '🔔', dotColor: 'bg-slate-400', labelColor: 'text-navy-950' }
 
 function getTypeMeta(type?: string) {
   return (type && TYPE_META[type]) || FALLBACK_META
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default async function NotificationsPage({
   searchParams,
 }: {
-  searchParams: { tab?: string }
+  searchParams: Promise<{ tab?: string }>
 }) {
+  const { tab } = await searchParams
   const supabase = await createSupabaseServerClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) redirect('/auth/login')
@@ -84,7 +109,7 @@ export default async function NotificationsPage({
   const allNotifications = (notifsData || []) as Notification[]
   const unreadCount = allNotifications.filter((n) => !n.is_read).length
 
-  const activeTab = searchParams.tab || 'all'
+  const activeTab = tab || 'all'
   const filtered = allNotifications.filter((n) => {
     if (activeTab === 'unread')   return !n.is_read
     if (activeTab === 'tickets')  return n.type !== 'comment_added'
@@ -100,29 +125,28 @@ export default async function NotificationsPage({
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-liturgical-white">
+
       {/* Nav */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+      <header className="bg-white border-b border-liturgical-muted sticky top-0 z-30 shadow-card">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-slate-900 flex items-center justify-center text-amber-400 font-bold text-sm">
-              {profile.full_name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div className="text-xs text-amber-600 font-bold tracking-wide">Diocese of Kalookan</div>
-              <div className="text-slate-900 font-bold text-sm leading-none">ICT Service Hub</div>
-            </div>
+          <div>
+            <div className="text-xs text-gold-600 font-bold tracking-wide">Diocese of Kalookan</div>
+            <div className="text-navy-950 font-bold text-sm leading-none">ICT Service Hub</div>
           </div>
-          <nav className="flex items-center gap-1">
-            <Link href="/dashboard" className="px-3 py-2 text-sm font-semibold text-slate-900 bg-slate-100 rounded">Dashboard</Link>
-            <Link href="/tickets/new" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors">New Request</Link>
-            <Link href="/tickets" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors">My Tickets</Link>
-            <div className="relative ml-2">
-              <Link href="/notifications" className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors" aria-label="Notifications">
-                <span className="text-xl">🔔</span>
-                {(unreadCount || 0) > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[10px] font-bold">
-                    {(unreadCount || 0) > 9 ? '9+' : unreadCount}
+          <nav className="flex items-center gap-2">
+            <Link href="/dashboard"   className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-navy-950 rounded hover:bg-liturgical-cream transition-colors">Dashboard</Link>
+            <Link href="/tickets"     className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-navy-950 rounded hover:bg-liturgical-cream transition-colors">My Tickets</Link>
+            <Link href="/tickets/new" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-navy-950 rounded hover:bg-liturgical-cream transition-colors">New Request</Link>
+            <div className="relative ml-1">
+              <Link
+                href="/notifications"
+                className="px-3 py-2 text-sm font-semibold text-navy-950 bg-navy-50 rounded flex items-center gap-1.5"
+              >
+                🔔 Notifications
+                {unreadCount > 0 && (
+                  <span className="h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full bg-gold-600 text-white text-[10px] font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </Link>
@@ -134,46 +158,45 @@ export default async function NotificationsPage({
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
 
-        {/* Page heading */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Notifications</h1>
-            <p className="text-slate-500 mt-1">
-              {unreadCount > 0
-                ? `${unreadCount} unread`
-                : 'All caught up'}{' '}
-              · {profile.parish_office || profile.department || 'ICT Service Portal'}
-            </p>
-          </div>
+        <PageHeader
+          title="Notifications"
+          subtitle={
+            unreadCount > 0
+              ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`
+              : `${allNotifications.length} notification${allNotifications.length !== 1 ? 's' : ''}`
+          }
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Notifications' }]}
+          action={
+            unreadCount > 0 ? (
+              <form action={markAllAsRead}>
+                <input type="hidden" name="userId" value={session.user.id} />
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 border border-navy-200 text-navy-950 px-5 py-2.5 rounded-btn font-semibold text-sm hover:bg-liturgical-cream transition-colors"
+                >
+                  ✓ Mark all as read
+                </button>
+              </form>
+            ) : null
+          }
+        />
 
-          {unreadCount > 0 && (
-            <form action={markAllAsRead}>
-              <input type="hidden" name="userId" value={session.user.id} />
-              <button
-                type="submit"
-                className="text-sm font-semibold text-amber-600 hover:text-amber-700 px-4 py-2 rounded-lg hover:bg-amber-50 transition-colors border border-amber-200"
-              >
-                Mark all as read
-              </button>
-            </form>
-          )}
-        </div>
-
-        <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit">
+        {/* Filter tabs */}
+        <div className="flex gap-1 bg-navy-50 border border-navy-200 rounded-card p-1 mb-6 w-fit">
           {TABS.map((tab) => (
             <Link
               key={tab.key}
               href={`/notifications?tab=${tab.key}`}
               className={`
-                px-4 py-2 rounded-lg text-sm font-medium transition-all
+                px-4 py-2 rounded text-sm font-medium transition-all flex items-center gap-1.5
                 ${activeTab === tab.key
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'}
+                  ? 'bg-white text-navy-950 shadow-card'
+                  : 'text-slate-500 hover:text-navy-950 hover:bg-liturgical-cream'}
               `}
             >
               {tab.label}
               {tab.key === 'unread' && unreadCount > 0 && (
-                <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-amber-600 text-white text-[10px] font-bold">
+                <span className="h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full bg-gold-600 text-white text-[10px] font-bold">
                   {unreadCount}
                 </span>
               )}
@@ -181,52 +204,77 @@ export default async function NotificationsPage({
           ))}
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Notification list */}
+        <div className="bg-white rounded-card border border-liturgical-muted shadow-card overflow-hidden">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <span className="text-5xl mb-4">
-                {activeTab === 'unread' ? '✅' : '🔔'}
-              </span>
-              <p className="text-slate-500 text-sm font-medium">
-                {activeTab === 'unread'
-                  ? 'All caught up! No unread notifications.'
-                  : 'No notifications to show.'}
-              </p>
-            </div>
+            <EmptyState
+              icon={activeTab === 'unread' ? '✅' : '🔔'}
+              title={
+                activeTab === 'unread'
+                  ? 'All caught up!'
+                  : allNotifications.length === 0
+                  ? 'No notifications yet'
+                  : 'No read notifications'
+              }
+              description={
+                allNotifications.length === 0
+                  ? 'Notifications appear here when the ICT team updates or resolves your tickets.'
+                  : activeTab === 'unread'
+                  ? 'You have no unread notifications.'
+                  : 'No notifications have been marked as read yet.'
+              }
+              action={
+                allNotifications.length === 0 ? (
+                  <Link
+                    href="/tickets"
+                    className="inline-flex items-center gap-2 bg-navy-950 text-white px-6 py-3 rounded-btn font-semibold hover:bg-navy-800 transition-colors"
+                  >
+                    View My Tickets
+                  </Link>
+                ) : undefined
+              }
+            />
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-liturgical-muted">
               {filtered.map((n) => {
                 const meta = getTypeMeta(n.type)
                 return (
                   <div
                     key={n.id}
-                    className={`relative flex items-start gap-4 px-6 py-4 transition-colors ${
-                      !n.is_read ? 'bg-blue-50/30' : 'hover:bg-slate-50'
+                    className={`relative flex items-start gap-4 px-6 py-5 transition-colors ${
+                      !n.is_read ? 'bg-navy-50/40' : 'hover:bg-liturgical-cream'
                     }`}
                   >
                     {!n.is_read && (
                       <span className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full ${meta.dotColor}`} />
                     )}
 
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xl">
+                    <div
+                      className="flex-shrink-0 h-10 w-10 rounded-full bg-navy-50 border border-navy-200 flex items-center justify-center text-xl"
+                      aria-hidden="true"
+                    >
                       {meta.icon}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-3">
                         <p className={`text-sm font-semibold ${meta.labelColor}`}>{n.title}</p>
-                        <span className="flex-shrink-0 text-xs text-slate-400 whitespace-nowrap">
+                        <span className="flex-shrink-0 text-xs text-slate-400 whitespace-nowrap font-mono">
                           {formatRelativeTime(n.created_at)}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-600 mt-0.5 leading-snug">{n.message}</p>
+                      <p className="text-sm text-slate-500 mt-0.5 leading-snug">{n.message}</p>
                       {n.ticket_id && (
-                        <Link
-                          href={`/tickets/${n.ticket_id}`}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-700 hover:underline mt-1.5 transition-colors"
-                        >
-                          View ticket →
-                        </Link>
+                        <form action={viewTicket} className="inline">
+                          <input type="hidden" name="ticketId" value={n.ticket_id} />
+                          <input type="hidden" name="userId"   value={session.user.id} />
+                          <button
+                            type="submit"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-gold-600 hover:text-gold-700 hover:underline mt-1.5 transition-colors"
+                          >
+                            View ticket →
+                          </button>
+                        </form>
                       )}
                     </div>
 
@@ -236,7 +284,7 @@ export default async function NotificationsPage({
                         <button
                           type="submit"
                           title="Mark as read"
-                          className="h-7 w-7 rounded-full border border-slate-200 bg-white hover:bg-amber-600 hover:border-amber-600 hover:text-white text-slate-400 flex items-center justify-center text-xs transition-colors"
+                          className="h-7 w-7 rounded-full border border-navy-200 bg-white hover:bg-navy-950 hover:border-navy-950 hover:text-white text-slate-400 flex items-center justify-center text-xs transition-colors"
                         >
                           ✓
                         </button>
