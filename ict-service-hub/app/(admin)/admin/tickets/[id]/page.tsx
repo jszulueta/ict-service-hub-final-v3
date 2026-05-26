@@ -6,16 +6,9 @@ import { StatusBadge, PriorityBadge, CategoryBadge, Alert } from '@/components/u
 import type { Profile, Ticket, Comment, TicketStatus, TicketPriority } from '@/types/database'
 import { TICKET_STATUS_LABELS, TICKET_PRIORITY_LABELS } from '@/types/database'
 import { AdminTicketActions } from '@/components/admin/TicketActions'
+import Navbar from '@/components/ui/navbar'
 
 export const metadata = { title: 'Ticket Detail' }
-
-const ADMIN_NAV = [
-  { href: '/admin',         label: 'Dashboard' },
-  { href: '/admin/tickets', label: 'Tickets'   },
-  { href: '/admin/users',   label: 'Users'     },
-  { href: '/admin/audit',   label: 'Audit Logs'},
-  { href: '/admin/spam',    label: 'Spam'      },
-]
 
 export default async function AdminTicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -25,8 +18,9 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
 
   const { data: profileData } = await supabase
     .from('profiles').select('id, role, full_name').eq('id', user.id).single()
-  const currentUser = profileData as Pick<Profile, 'id' | 'role' | 'full_name'> | null
-  if (!currentUser || !['ict_staff', 'ict_admin', 'super_admin'].includes(currentUser.role)) redirect('/dashboard')
+  const profile = profileData as Pick<Profile, 'id' | 'role' | 'full_name'> | null
+  if (!profile) redirect('/auth/login')
+  if (!['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)) redirect('/dashboard')
 
   const { data: ticketData } = await supabase
     .from('tickets').select('*').eq('id', id).single()
@@ -57,25 +51,7 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div>
-            <div className="text-xs text-amber-400 font-bold tracking-widest uppercase">Diocese of Kalookan</div>
-            <div className="text-white font-bold text-lg leading-none">ICT Service Hub</div>
-          </div>
-          <nav className="flex items-center gap-1">
-            {ADMIN_NAV.map((item) => (
-              <Link key={item.href} href={item.href}
-                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${item.href === '/admin/tickets' ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}>
-                {item.label}
-              </Link>
-            ))}
-            <div className="ml-4 pl-4 border-l border-white/10">
-              <Link href="/api/auth/signout" className="text-slate-400 hover:text-white text-sm">Sign Out</Link>
-            </div>
-          </nav>
-        </div>
-      </header>
+      <Navbar profile={profile} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Breadcrumb */}
@@ -142,7 +118,7 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
               currentPriority={ticket.priority}
               currentAssignedTo={ticket.assigned_to}
               staff={staff}
-              currentUserId={currentUser.id}
+              currentUserId={profile.id}
             />
 
             {/* Comments */}

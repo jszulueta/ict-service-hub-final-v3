@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { StatusBadge, PriorityBadge, EmptyState } from '@/components/ui'
 import type { Ticket, Profile, Notification } from '@/types/database'
 import { SERVICE_CATEGORY_LABELS } from '@/types/database'
+import Navbar from '@/components/ui/navbar'
 
 export const metadata = { title: 'My Dashboard' }
 
@@ -37,15 +38,14 @@ export default async function UserDashboardPage() {
     .order('created_at', { ascending: false })
     .limit(5)
 
-  const myTickets   = (ticketsData   || []) as Ticket[]
+  const myTickets = (ticketsData || []) as Ticket[]
   const notifications = (notifsData  || []) as Notification[]
 
   const activeCount = myTickets.filter((t) =>
     ['pending', 'open', 'in_progress', 'on_hold'].includes(t.status)
   ).length
-
   const resolvedCount = myTickets.filter((t) => t.status === 'resolved').length
-  const closedCount   = myTickets.filter((t) => t.status === 'closed').length
+  const closedCount = myTickets.filter((t) => t.status === 'closed').length
 
   const categoryIcons: Record<string, string> = {
     systems_software: '💻', network_infrastructure: '🌐',
@@ -54,36 +54,7 @@ export default async function UserDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Nav */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-slate-900 flex items-center justify-center text-amber-400 font-bold text-sm">
-              {profile.full_name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div className="text-xs text-amber-600 font-bold tracking-wide">Diocese of Kalookan</div>
-              <div className="text-slate-900 font-bold text-sm leading-none">ICT Service Hub</div>
-            </div>
-          </div>
-          <nav className="flex items-center gap-1">
-            <Link href="/dashboard" className="px-3 py-2 text-sm font-semibold text-slate-900 bg-slate-100 rounded">Dashboard</Link>
-            <Link href="/tickets/new" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors">New Request</Link>
-            <Link href="/tickets" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors">My Tickets</Link>
-            <div className="relative ml-2">
-              <Link href="/notifications" className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors" aria-label="Notifications">
-                <span className="text-xl">🔔</span>
-                {(unreadCount || 0) > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[10px] font-bold">
-                    {(unreadCount || 0) > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </Link>
-            </div>
-            <Link href="/api/auth/signout" className="ml-2 text-sm text-slate-400 hover:text-slate-600">Sign Out</Link>
-          </nav>
-        </div>
-      </header>
+      <Navbar profile={profile} unreadCount={unreadCount ?? 0} />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* Welcome */}

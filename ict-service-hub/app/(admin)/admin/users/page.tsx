@@ -4,16 +4,9 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Profile, UserRole } from '@/types/database'
 import { AdminUserActions } from '@/components/admin/UserActions'
+import Navbar from '@/components/ui/navbar'
 
 export const metadata = { title: 'User Management' }
-
-const ADMIN_NAV = [
-  { href: '/admin',         label: 'Dashboard' },
-  { href: '/admin/tickets', label: 'Tickets'   },
-  { href: '/admin/users',   label: 'Users'     },
-  { href: '/admin/audit',   label: 'Audit Logs'},
-  { href: '/admin/spam',    label: 'Spam'      },
-]
 
 const ROLE_BADGE: Record<UserRole, string> = {
   requester:   'bg-slate-100 text-slate-600',
@@ -32,22 +25,26 @@ const ROLE_LABELS: Record<UserRole, string> = {
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: { role?: string; q?: string }
+  searchParams: Promise<{ role?: string; q?: string }>
+  
 }) {
+  const params = await searchParams
+
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
   const { data: profileData } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single()
-  const currentUser = profileData as Pick<Profile, 'role'> | null
-  if (!currentUser || !['ict_admin', 'super_admin'].includes(currentUser.role)) redirect('/admin')
+    .from('profiles').select('role, full_name').eq('id', user.id).single()
+  const profile = profileData as Pick<Profile, 'role' | 'full_name'> | null
+  if (!profile) redirect('/auth/login')
+  if (!['ict_admin', 'super_admin'].includes(profile.role)) redirect('/admin')
 
   // Fetch users — use admin client to bypass RLS
   const adminClient = createSupabaseAdminClient()
   let query = adminClient.from('profiles').select('*').order('created_at', { ascending: false })
-  if (searchParams.role) query = query.eq('role', searchParams.role)
-  if (searchParams.q)    query = query.ilike('full_name', `%${searchParams.q}%`)
+  if (params.role) query = query.eq('role', params.role)
+  if (params.q)    query = query.ilike('full_name', `%${params.q}%`)
 
   const { data: usersData } = await query
   const users = (usersData || []) as Profile[]
@@ -63,25 +60,7 @@ export default async function AdminUsersPage({
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div>
-            <div className="text-xs text-amber-400 font-bold tracking-widest uppercase">Diocese of Kalookan</div>
-            <div className="text-white font-bold text-lg leading-none">ICT Service Hub</div>
-          </div>
-          <nav className="flex items-center gap-1">
-            {ADMIN_NAV.map((item) => (
-              <Link key={item.href} href={item.href}
-                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${item.href === '/admin/users' ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}>
-                {item.label}
-              </Link>
-            ))}
-            <div className="ml-4 pl-4 border-l border-white/10">
-              <Link href="/api/auth/signout" className="text-slate-400 hover:text-white text-sm">Sign Out</Link>
-            </div>
-          </nav>
-        </div>
-      </header>
+      <Navbar profile={profile} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-6">
@@ -92,11 +71,11 @@ export default async function AdminUsersPage({
         {/* Role filter tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
           {[
-            { label: `All (${counts.all})`,               href: '/admin/users',                  active: !searchParams.role },
-            { label: `Requesters (${counts.requester})`,  href: '/admin/users?role=requester',   active: searchParams.role === 'requester' },
-            { label: `ICT Staff (${counts.ict_staff})`,   href: '/admin/users?role=ict_staff',   active: searchParams.role === 'ict_staff' },
-            { label: `Admins (${counts.ict_admin})`,      href: '/admin/users?role=ict_admin',   active: searchParams.role === 'ict_admin' },
-            { label: `Suspended (${counts.suspended})`,   href: '/admin/users?suspended=true',   active: searchParams.role === 'suspended' },
+            { label: `All (${counts.all})`,               href: '/admin/users',                  active: !params.role },
+            { label: `Requesters (${counts.requester})`,  href: '/admin/users?role=requester',   active: params.role === 'requester' },
+            { label: `ICT Staff (${counts.ict_staff})`,   href: '/admin/users?role=ict_staff',   active: params.role === 'ict_staff' },
+            { label: `Admins (${counts.ict_admin})`,      href: '/admin/users?role=ict_admin',   active: params.role === 'ict_admin' },
+            { label: `Suspended (${counts.suspended})`,   href: '/admin/users?suspended=true',   active: params.role === 'suspended' },
           ].map((tab) => (
             <Link key={tab.href} href={tab.href}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab.active ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}`}>
@@ -109,12 +88,12 @@ export default async function AdminUsersPage({
         <form method="GET" className="mb-4 flex gap-2">
           <input
             name="q"
-            defaultValue={searchParams.q}
+            defaultValue={params.q}
             placeholder="Search by name..."
             className="h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 flex-1 max-w-xs bg-white"
           />
           <button type="submit" className="h-10 px-4 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-700 transition-colors">Search</button>
-          {searchParams.q && <Link href="/admin/users" className="h-10 px-4 flex items-center bg-white border border-slate-200 text-slate-600 rounded-lg text-sm hover:bg-slate-50">Clear</Link>}
+          {params.q && <Link href="/admin/users" className="h-10 px-4 flex items-center bg-white border border-slate-200 text-slate-600 rounded-lg text-sm hover:bg-slate-50">Clear</Link>}
         </form>
 
         {/* Users table */}
@@ -145,7 +124,7 @@ export default async function AdminUsersPage({
                     <td className="px-4 py-3 text-slate-500 text-xs">
                       {[user.department, user.parish_office].filter(Boolean).join(' · ') || '—'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${ROLE_BADGE[user.role]}`}>
                         {ROLE_LABELS[user.role]}
                       </span>
@@ -164,7 +143,7 @@ export default async function AdminUsersPage({
                         userId={user.id}
                         currentRole={user.role}
                         isSuspended={user.is_suspended}
-                        currentUserRole={currentUser.role}
+                        currentUserRole={profile.role}
                       />
                     </td>
                   </tr>

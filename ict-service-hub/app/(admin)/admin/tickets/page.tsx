@@ -5,22 +5,17 @@ import Link from 'next/link'
 import { StatusBadge, PriorityBadge, CategoryBadge } from '@/components/ui'
 import type { Profile, Ticket, TicketStatus, TicketPriority, ServiceCategory } from '@/types/database'
 import { SERVICE_CATEGORY_LABELS, TICKET_STATUS_LABELS, TICKET_PRIORITY_LABELS } from '@/types/database'
+import Navbar from '@/components/ui/navbar'
 
 export const metadata = { title: 'All Tickets' }
-
-const ADMIN_NAV = [
-  { href: '/admin',         label: 'Dashboard' },
-  { href: '/admin/tickets', label: 'Tickets'   },
-  { href: '/admin/users',   label: 'Users'     },
-  { href: '/admin/audit',   label: 'Audit Logs'},
-  { href: '/admin/spam',    label: 'Spam'      },
-]
 
 export default async function AdminTicketsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; priority?: string; category?: string; assigned?: string; q?: string }
+  searchParams: Promise<{ status?: string; priority?: string; category?: string; assigned?: string; q?: string }>
 }) {
+  const params = await searchParams
+
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
@@ -28,7 +23,8 @@ export default async function AdminTicketsPage({
   const { data: profileData } = await supabase
     .from('profiles').select('role, full_name').eq('id', user.id).single()
   const profile = profileData as Pick<Profile, 'role' | 'full_name'> | null
-  if (!profile || !['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)) redirect('/dashboard')
+  if (!profile) redirect('/auth/login')
+  if (!['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)) redirect('/dashboard')
 
   // Build query with filters
   let query = supabase
@@ -36,11 +32,11 @@ export default async function AdminTicketsPage({
     .select('id, ticket_number, title, category, status, priority, created_at, assigned_to, requester_id')
     .order('created_at', { ascending: false })
 
-  if (searchParams.status)   query = query.eq('status', searchParams.status)
-  if (searchParams.priority) query = query.eq('priority', searchParams.priority)
-  if (searchParams.category) query = query.eq('category', searchParams.category)
-  if (searchParams.assigned === 'none') query = query.is('assigned_to', null)
-  if (searchParams.q) query = query.ilike('title', `%${searchParams.q}%`)
+  if (params.status)   query = query.eq('status', params.status)
+  if (params.priority) query = query.eq('priority', params.priority)
+  if (params.category) query = query.eq('category', params.category)
+  if (params.assigned === 'none') query = query.is('assigned_to', null)
+  if (params.q) query = query.ilike('title', `%${params.q}%`)
 
   const { data: ticketsData } = await query.limit(100)
   const tickets = (ticketsData || []) as Ticket[]
@@ -63,32 +59,13 @@ export default async function AdminTicketsPage({
   }
 
   const activeFilters = [
-    searchParams.status, searchParams.priority,
-    searchParams.category, searchParams.assigned, searchParams.q,
+    params.status, params.priority,
+    params.category, params.assigned, params.q,
   ].filter(Boolean).length
 
   return (
     <div className="min-h-screen bg-slate-100">
-      {/* Top bar */}
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div>
-            <div className="text-xs text-amber-400 font-bold tracking-widest uppercase">Diocese of Kalookan</div>
-            <div className="text-white font-bold text-lg leading-none">ICT Service Hub</div>
-          </div>
-          <nav className="flex items-center gap-1">
-            {ADMIN_NAV.map((item) => (
-              <Link key={item.href} href={item.href}
-                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${item.href === '/admin/tickets' ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}>
-                {item.label}
-              </Link>
-            ))}
-            <div className="ml-4 pl-4 border-l border-white/10">
-              <Link href="/api/auth/signout" className="text-slate-400 hover:text-white text-sm">Sign Out</Link>
-            </div>
-          </nav>
-        </div>
-      </header>
+      <Navbar profile={profile} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
@@ -103,23 +80,23 @@ export default async function AdminTicketsPage({
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <input
               name="q"
-              defaultValue={searchParams.q}
+              defaultValue={params.q}
               placeholder="Search title..."
               className="col-span-2 h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
             />
-            <select name="status" defaultValue={searchParams.status || ''} className="h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <select name="status" defaultValue={params.status || ''} className="h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
               <option value="">All Statuses</option>
               {(Object.entries(TICKET_STATUS_LABELS) as [TicketStatus, string][]).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>
-            <select name="priority" defaultValue={searchParams.priority || ''} className="h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <select name="priority" defaultValue={params.priority || ''} className="h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
               <option value="">All Priorities</option>
               {(Object.entries(TICKET_PRIORITY_LABELS) as [TicketPriority, string][]).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
             </select>
-            <select name="category" defaultValue={searchParams.category || ''} className="h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <select name="category" defaultValue={params.category || ''} className="h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
               <option value="">All Categories</option>
               {(Object.entries(SERVICE_CATEGORY_LABELS) as [ServiceCategory, string][]).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>

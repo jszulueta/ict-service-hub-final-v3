@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { EmptyState, PageHeader } from '@/components/ui'
 import type { Profile, Notification } from '@/types/database'
+import Navbar from '@/components/ui/navbar'
 
 export const metadata = { title: 'Notifications' }
 
@@ -126,35 +127,7 @@ export default async function NotificationsPage({
 
   return (
     <div className="min-h-screen bg-liturgical-white">
-
-      {/* Nav */}
-      <header className="bg-white border-b border-liturgical-muted sticky top-0 z-30 shadow-card">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div>
-            <div className="text-xs text-gold-600 font-bold tracking-wide">Diocese of Kalookan</div>
-            <div className="text-navy-950 font-bold text-sm leading-none">ICT Service Hub</div>
-          </div>
-          <nav className="flex items-center gap-2">
-            <Link href="/dashboard"   className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-navy-950 rounded hover:bg-liturgical-cream transition-colors">Dashboard</Link>
-            <Link href="/tickets"     className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-navy-950 rounded hover:bg-liturgical-cream transition-colors">My Tickets</Link>
-            <Link href="/tickets/new" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-navy-950 rounded hover:bg-liturgical-cream transition-colors">New Request</Link>
-            <div className="relative ml-1">
-              <Link
-                href="/notifications"
-                className="px-3 py-2 text-sm font-semibold text-navy-950 bg-navy-50 rounded flex items-center gap-1.5"
-              >
-                🔔 Notifications
-                {unreadCount > 0 && (
-                  <span className="h-4 min-w-[1rem] px-1 flex items-center justify-center rounded-full bg-gold-600 text-white text-[10px] font-bold">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </Link>
-            </div>
-            <Link href="/api/auth/signout" className="ml-2 text-sm text-slate-400 hover:text-slate-600">Sign Out</Link>
-          </nav>
-        </div>
-      </header>
+      <Navbar profile={profile} unreadCount={unreadCount ?? 0} />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
 

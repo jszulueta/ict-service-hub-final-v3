@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { StatusBadge, PriorityBadge, CategoryBadge, StatsCard } from '@/components/ui'
 import { AdminUsageMonitor } from '@/components/admin/UsageMonitor'
 import type { Profile, Ticket } from '@/types/database'
+import Navbar from '@/components/ui/navbar'
 
 export const metadata = { title: 'Admin Dashboard' }
 
@@ -21,7 +22,8 @@ export default async function AdminDashboardPage() {
 
   const profile = profileData as Pick<Profile, 'role' | 'full_name'> | null
 
-  if (!profile || !['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)) {
+  if (!profile) redirect('/auth/login')
+  if (!['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)) {
     redirect('/dashboard')
   }
 
@@ -49,39 +51,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      {/* Admin Top Bar */}
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <div>
-                <div className="text-xs text-amber-400 font-bold tracking-widest uppercase">Diocese of Kalookan</div>
-                <div className="text-white font-bold text-lg leading-none">ICT Service Hub</div>
-              </div>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-amber-600/20 text-amber-400 text-xs font-bold border border-amber-600/30">
-                Admin Portal
-              </span>
-            </div>
-            <nav className="flex items-center gap-1">
-              {[
-                { href: '/admin',         label: 'Dashboard', active: true },
-                { href: '/admin/tickets', label: 'Tickets'               },
-                { href: '/admin/users',   label: 'Users'                 },
-                { href: '/admin/audit',   label: 'Audit Logs'            },
-              ].map((item) => (
-                <Link key={item.href} href={item.href}
-                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${item.active ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}>
-                  {item.label}
-                </Link>
-              ))}
-              <div className="ml-4 pl-4 border-l border-white/10 flex items-center gap-2">
-                <span className="text-slate-300 text-sm hidden md:block">{profile.full_name}</span>
-                <Link href="/api/auth/signout" className="text-slate-400 hover:text-white text-sm">Sign Out</Link>
-              </div>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Navbar profile={profile} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -149,13 +119,17 @@ export default async function AdminDashboardPage() {
                   <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No tickets yet.</td></tr>
                 ) : recentTickets.map((ticket) => (
                   <tr key={ticket.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <Link href={`/admin/tickets/${ticket.id}`} className="font-mono text-xs font-bold text-slate-900 hover:text-amber-600">{ticket.ticket_number}</Link>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <Link href={`/admin/tickets/${ticket.id}`} className="font-mono text-xs font-bold text-slate-900 hover:text-amber-600 ">{ticket.ticket_number}</Link>
                     </td>
                     <td className="px-4 py-3 max-w-[200px]">
-                      <Link href={`/admin/tickets/${ticket.id}`} className="text-slate-900 hover:text-amber-600 font-medium truncate block">{ticket.title}</Link>
+                      <Link href={`/admin/tickets/${ticket.id}`} className="text-slate-900 hover:text-amber-600 font-medium truncate block">
+                        {ticket.title.length > 20
+                        ? `${ticket.title.slice(0, 20)}...`
+                        : ticket.title}
+                      </Link>
                     </td>
-                    <td className="px-4 py-3"><CategoryBadge category={ticket.category} /></td>
+                    <td className="px-4 py-3 whitespace-nowrap"><CategoryBadge category={ticket.category} /></td>
                     <td className="px-4 py-3"><StatusBadge status={ticket.status} /></td>
                     <td className="px-4 py-3"><PriorityBadge priority={ticket.priority} /></td>
                     <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
