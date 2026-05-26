@@ -119,13 +119,17 @@ export default async function AdminDashboardPage() {
                   <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No tickets yet.</td></tr>
                 ) : recentTickets.map((ticket) => (
                   <tr key={ticket.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <Link href={`/admin/tickets/${ticket.id}`} className="font-mono text-xs font-bold text-slate-900 hover:text-amber-600">{ticket.ticket_number}</Link>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <Link href={`/admin/tickets/${ticket.id}`} className="font-mono text-xs font-bold text-slate-900 hover:text-amber-600 ">{ticket.ticket_number}</Link>
                     </td>
                     <td className="px-4 py-3 max-w-[200px]">
-                      <Link href={`/admin/tickets/${ticket.id}`} className="text-slate-900 hover:text-amber-600 font-medium truncate block">{ticket.title}</Link>
+                      <Link href={`/admin/tickets/${ticket.id}`} className="text-slate-900 hover:text-amber-600 font-medium truncate block">
+                        {ticket.title.length > 20
+                        ? `${ticket.title.slice(0, 20)}...`
+                        : ticket.title}
+                      </Link>
                     </td>
-                    <td className="px-4 py-3"><CategoryBadge category={ticket.category} /></td>
+                    <td className="px-4 py-3 whitespace-nowrap"><CategoryBadge category={ticket.category} /></td>
                     <td className="px-4 py-3"><StatusBadge status={ticket.status} /></td>
                     <td className="px-4 py-3"><PriorityBadge priority={ticket.priority} /></td>
                     <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">

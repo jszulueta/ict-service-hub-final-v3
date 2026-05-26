@@ -124,7 +124,7 @@ export default async function AdminUsersPage({
                     <td className="px-4 py-3 text-slate-500 text-xs">
                       {[user.department, user.parish_office].filter(Boolean).join(' · ') || '—'}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${ROLE_BADGE[user.role]}`}>
                         {ROLE_LABELS[user.role]}
                       </span>
