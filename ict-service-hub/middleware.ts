@@ -60,45 +60,51 @@ function pruneRateLimitStore() {
 
 // ── Middleware ───────────────────────────────────────────────────────────────
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
-  const res = NextResponse.next()
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
 
   if (Math.random() < 0.01) pruneRateLimitStore()
 
-  const rateLimitKey = getRateLimitKey(req)
-  const isAuthRoute = pathname.startsWith('/auth')
-  const limit = isAuthRoute ? 15 : 60
+  const isPrefetch =
+    request.headers.get('purpose') === 'prefetch' ||
+    request.headers.get('x-middleware-prefetch') === '1' ||
+    request.headers.has('next-router-prefetch')
 
-  const { allowed, remaining, resetAt } = checkRateLimit(rateLimitKey, limit)
+  const isRSC = request.headers.has('rsc')
+  const isDataRequest = pathname.startsWith('/_next/data') || request.headers.has('x-nextjs-data')
+  const isInternal = isPrefetch || isRSC || isDataRequest
 
-  if (!allowed) {
-    return new NextResponse(
-      JSON.stringify({
-        error: 'Too many requests. Please wait before trying again.',
-        retryAfter: Math.ceil((resetAt - Date.now()) / 1000),
-      }),
-      {
-        status: 429,
-        headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)),
-          'X-RateLimit-Limit': String(limit),
-          'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
-        },
-      }
-    )
+  if (!isInternal) {
+    const isAuthRoute = pathname.startsWith('/auth')
+    const rateLimitKey = getRateLimitKey(request)
+    const limit = isAuthRoute ? 60 : 300
+
+    const { allowed, remaining, resetAt } = checkRateLimit(rateLimitKey, limit)
+
+    if (!allowed) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Too many requests. Please wait before trying again.',
+          retryAfter: Math.ceil((resetAt - Date.now()) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)),
+            'X-RateLimit-Limit': String(limit),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
+          },
+        }
+      )
+    }
   }
 
-  res.headers.set('X-RateLimit-Limit', String(limit))
-  res.headers.set('X-RateLimit-Remaining', String(remaining))
-  res.headers.set('X-RateLimit-Reset', String(Math.ceil(resetAt / 1000)))
-
-  const isPublic = PUBLIC_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  )
-  if (isPublic) return res
+  
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -106,27 +112,57 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         getAll() {
-          return req.cookies.getAll()
+          return request.cookies.getAll()
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            req.cookies.set(name, value)
-            res.cookies.set(name, value, options)
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
           })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
         },
       },
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const isPublic = PUBLIC_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  )
 
-  if (!user) {
-    const loginUrl = req.nextUrl.clone()
-    loginUrl.pathname = '/auth/login'
-    loginUrl.searchParams.set('redirectTo', pathname)
-    return NextResponse.redirect(loginUrl)
+  if (isPrefetch) {
+    return supabaseResponse
   }
 
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const copyCookies = (targetResponse: NextResponse) => {
+    supabaseResponse.cookies.getAll().forEach((c) => {
+      targetResponse.cookies.set(c.name, c.value, {
+        domain: c.domain,
+        path: c.path,
+        maxAge: c.maxAge,
+        httpOnly: c.httpOnly,
+        secure: c.secure,
+        sameSite: c.sameSite,
+      })
+    })
+  }
+
+  if (!user) {
+    if (isPublic) return supabaseResponse
+
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/auth/login'
+    loginUrl.searchParams.set('redirectTo', pathname)
+
+    const redirectRes = NextResponse.redirect(loginUrl)
+    copyCookies(redirectRes)
+    return redirectRes
+  }
+
+  // If user is authenticated, we must also fetch their profile to check if they are active/suspended
   const { data: profile } = await supabase
     .from('profiles')
     .select('role, is_active, is_suspended')
@@ -134,35 +170,42 @@ export async function middleware(req: NextRequest) {
     .single()
 
   if (!profile || !profile.is_active || profile.is_suspended) {
-    const suspendedUrl = req.nextUrl.clone()
+    const suspendedUrl = request.nextUrl.clone()
     suspendedUrl.pathname = '/auth/suspended'
-    return NextResponse.redirect(suspendedUrl)
+    const redirectRes = NextResponse.redirect(suspendedUrl)
+    copyCookies(redirectRes)
+    return redirectRes
   }
 
   const userRole = profile.role as string
 
+  // Admin/User routing logic
   const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/')
   if (isAdminRoute && !ADMIN_ROLES.includes(userRole)) {
-    const redirectUrl = req.nextUrl.clone()
+    const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = '/dashboard'
-    return NextResponse.redirect(redirectUrl)
+    const redirectRes = NextResponse.redirect(redirectUrl)
+    copyCookies(redirectRes)
+    return redirectRes
   }
 
   if (pathname === '/dashboard' && ADMIN_ROLES.includes(userRole)) {
-    const adminUrl = req.nextUrl.clone()
+    const adminUrl = request.nextUrl.clone()
     adminUrl.pathname = '/admin'
-    return NextResponse.redirect(adminUrl)
+    const redirectRes = NextResponse.redirect(adminUrl)
+    copyCookies(redirectRes)
+    return redirectRes
   }
 
-  res.headers.set('x-user-id', user.id)
-  res.headers.set('x-user-role', userRole)
-  res.headers.set('x-user-email', user.email || '')
+  supabaseResponse.headers.set('x-user-id', user.id)
+  supabaseResponse.headers.set('x-user-role', userRole)
+  supabaseResponse.headers.set('x-user-email', user.email || '')
 
-  return res
+  return supabaseResponse
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|images|icons|fonts|api/webhooks).*)',
+    '/((?!_next/static|_next/image|favicon.ico|images|icons|fonts|api/webhooks|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|robots\\.txt|sitemap\\.xml).*)',
   ],
 }

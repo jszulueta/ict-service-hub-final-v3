@@ -1,7 +1,7 @@
 'use client'
 // app/auth/login/page.tsx
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,7 +10,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Button, Field, Input, Alert } from '@/components/ui'
 import Link from 'next/link'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/'
@@ -39,10 +39,64 @@ export default function LoginPage() {
       return
     }
 
-    router.push(redirectTo)
     router.refresh()
+    router.push(redirectTo)
   }
 
+  return (
+    <div className="bg-white rounded-card border border-liturgical-muted shadow-card p-8">
+      {serverError && (
+        <div className="mb-5">
+          <Alert variant="error" onDismiss={() => setServerError(null)}>{serverError}</Alert>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+        <Field label="Email Address" htmlFor="email" error={errors.email?.message} required>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@dioceseofkalookan.org"
+            error={!!errors.email}
+            {...register('email')}
+          />
+        </Field>
+
+        <Field label="Password" htmlFor="password" error={errors.password?.message} required>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="Your password"
+            error={!!errors.password}
+            {...register('password')}
+          />
+        </Field>
+
+        <div className="flex justify-end">
+          <Link href="/auth/forgot-password" prefetch={false} className="text-sm text-gold-600 hover:text-gold-700 font-medium">
+            Forgot password?
+          </Link>
+        </div>
+
+        <Button type="submit" variant="primary" size="lg" fullWidth loading={isSubmitting}>
+          {isSubmitting ? 'Signing in…' : 'Sign In'}
+        </Button>
+      </form>
+
+      <p className="text-center text-sm text-slate-500 mt-6">
+        Don&apos;t have an account?{' '}
+        <Link href="/auth/signup" prefetch={false} className="text-gold-600 hover:text-gold-700 font-semibold">
+          Sign up here
+        </Link>
+      </p>
+    </div>
+  )
+}
+
+// 2. Wrap the form in a Suspense boundary in the default export
+export default function LoginPage() {
   return (
     <div className="min-h-screen bg-liturgical-white flex items-center justify-center px-4">
       <div className="w-full max-w-md">
@@ -53,54 +107,14 @@ export default function LoginPage() {
           <p className="text-slate-500 mt-2">Sign in to access the portal</p>
         </div>
 
-        <div className="bg-white rounded-card border border-liturgical-muted shadow-card p-8">
-          {serverError && (
-            <div className="mb-5">
-              <Alert variant="error" onDismiss={() => setServerError(null)}>{serverError}</Alert>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-            <Field label="Email Address" htmlFor="email" error={errors.email?.message} required>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@dioceseofkalookan.org"
-                error={!!errors.email}
-                {...register('email')}
-              />
-            </Field>
-
-            <Field label="Password" htmlFor="password" error={errors.password?.message} required>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="Your password"
-                error={!!errors.password}
-                {...register('password')}
-              />
-            </Field>
-
-            <div className="flex justify-end">
-              <Link href="/auth/forgot-password" className="text-sm text-gold-600 hover:text-gold-700 font-medium">
-                Forgot password?
-              </Link>
-            </div>
-
-            <Button type="submit" variant="primary" size="lg" fullWidth loading={isSubmitting}>
-              {isSubmitting ? 'Signing in…' : 'Sign In'}
-            </Button>
-          </form>
-
-          <p className="text-center text-sm text-slate-500 mt-6">
-            Don&apos;t have an account?{' '}
-            <Link href="/auth/signup" className="text-gold-600 hover:text-gold-700 font-semibold">
-              Sign up here
-            </Link>
-          </p>
-        </div>
+        {/* The Suspense Boundary */}
+        <Suspense fallback={
+          <div className="bg-white rounded-card border border-liturgical-muted shadow-card p-8 flex justify-center text-slate-400 text-sm">
+            Loading form...
+          </div>
+        }>
+          <LoginForm />
+        </Suspense>
 
         <p className="text-center text-xs text-slate-400 mt-6">
           For ICT support, contact ict@dioceseofkalookan.org

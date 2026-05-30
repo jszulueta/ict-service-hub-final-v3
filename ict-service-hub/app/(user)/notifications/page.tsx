@@ -15,7 +15,7 @@ async function markOneAsRead(formData: FormData) {
   'use server'
   const id = formData.get('id') as string
   const supabase = await createSupabaseServerClient()
-  await supabase.from('notifications').update({ is_read: true } as never).eq('id', id)
+  await (supabase.from('notifications') as any).update({ is_read: true }).eq('id', id)
   revalidatePath('/notifications')
 }
 
@@ -23,9 +23,8 @@ async function markAllAsRead(formData: FormData) {
   'use server'
   const userId = formData.get('userId') as string
   const supabase = await createSupabaseServerClient()
-  await supabase
-    .from('notifications')
-    .update({ is_read: true } as never)
+  await (supabase.from('notifications') as any)
+    .update({ is_read: true })
     .eq('user_id', userId)
     .eq('is_read', false)
   revalidatePath('/notifications')
@@ -36,9 +35,8 @@ async function viewTicket(formData: FormData) {
   const ticketId = formData.get('ticketId') as string
   const userId   = formData.get('userId')   as string
   const supabase = await createSupabaseServerClient()
-  await supabase
-    .from('notifications')
-    .update({ is_read: true } as never)
+  await (supabase.from('notifications') as any)
+    .update({ is_read: true })
     .eq('ticket_id', ticketId)
     .eq('user_id', userId)
     .eq('is_read', false)
@@ -87,22 +85,21 @@ export default async function NotificationsPage({
 }) {
   const { tab } = await searchParams
   const supabase = await createSupabaseServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/auth/login')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   const { data: profileData } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   const profile = profileData as Profile | null
   if (!profile) redirect('/auth/login')
 
-  const { data: notifsData } = await supabase
-    .from('notifications')
+  const { data: notifsData } = await (supabase.from('notifications') as any)
     .select('*')
-    .eq('user_id', session.user.id)
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
   const allNotifications = (notifsData || []) as Notification[]
@@ -140,7 +137,7 @@ export default async function NotificationsPage({
           action={
             unreadCount > 0 ? (
               <form action={markAllAsRead}>
-                <input type="hidden" name="userId" value={session.user.id} />
+                <input type="hidden" name="userId" value={user.id} />
                 <button
                   type="submit"
                   className="inline-flex items-center gap-2 border border-navy-200 text-navy-950 px-5 py-2.5 rounded-btn font-semibold text-sm hover:bg-liturgical-cream transition-colors"
@@ -238,7 +235,7 @@ export default async function NotificationsPage({
                       {n.ticket_id && (
                         <form action={viewTicket} className="inline">
                           <input type="hidden" name="ticketId" value={n.ticket_id} />
-                          <input type="hidden" name="userId"   value={session.user.id} />
+                          <input type="hidden" name="userId"   value={user.id} />
                           <button
                             type="submit"
                             className="inline-flex items-center gap-1 text-xs font-semibold text-gold-600 hover:text-gold-700 hover:underline mt-1.5 transition-colors"
