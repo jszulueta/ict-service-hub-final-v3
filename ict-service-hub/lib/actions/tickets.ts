@@ -18,8 +18,7 @@ async function getAuthenticatedUser() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized: No active session.')
 
-  const { data } = await supabase
-    .from('profiles')
+  const { data } = await (supabase.from('profiles') as any)
     .select('id, email, full_name, role, is_active, is_suspended')
     .eq('id', user.id)
     .single()
@@ -62,8 +61,7 @@ export async function createTicket(
     // ── Relaxed anti-spam: only block if same user submits 10+ tickets in one hour
     // (was 5, which was too aggressive for testing)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-    const { count: recentCount } = await supabase
-      .from('tickets')
+    const { count: recentCount } = await (supabase.from('tickets') as any)
       .select('id', { count: 'exact', head: true })
       .eq('requester_id', user.id)
       .gte('created_at', oneHourAgo)
@@ -73,8 +71,7 @@ export async function createTicket(
     }
 
     // ── Insert ticket
-    const { data: ticketData, error: insertError } = await supabase
-      .from('tickets')
+    const { data: ticketData, error: insertError } = await (supabase.from('tickets') as any)
       .insert({
         requester_id:          user.id,
         title:                 parsed.data.title,
@@ -105,7 +102,7 @@ export async function createTicket(
 
     // ── Notification (non-blocking, safe to fail)
     try {
-      await supabase.from('notifications').insert({
+      await (supabase.from('notifications') as any).insert({
         user_id:   user.id,
         ticket_id: ticket.id,
         type:      'ticket_created' as const,
@@ -120,7 +117,7 @@ export async function createTicket(
     // ── Audit log (non-blocking)
     try {
       const adminClient = createSupabaseAdminClient()
-      await adminClient.from('audit_logs').insert({
+      await (adminClient.from('audit_logs') as any).insert({
         actor_id:    user.id,
         actor_email: user.email,
         action:      'ticket_created' as const,
@@ -167,8 +164,7 @@ export async function updateTicket(
 
     const supabase = await createSupabaseServerClient()
 
-    const { data: existingData } = await supabase
-      .from('tickets')
+    const { data: existingData } = await (supabase.from('tickets') as any)
       .select('id, status, assigned_to, requester_id, ticket_number, resolved_at, closed_at')
       .eq('id', ticketId)
       .single()
@@ -187,7 +183,7 @@ export async function updateTicket(
     // updates while allowing priority/assigned_to. Role is already verified
     // above via getAdminUser().
     const updateAdminClient = createSupabaseAdminClient()
-    const { error } = await updateAdminClient.from('tickets').update(updateData).eq('id', ticketId)
+    const { error } = await (updateAdminClient.from('tickets') as any).update(updateData).eq('id', ticketId)
     if (error) {
       console.error('[updateTicket] Update error:', error.message, error.details, error.hint)
       return { success: false, error: 'Failed to update ticket.' }
@@ -213,7 +209,7 @@ export async function updateTicket(
         parsed.data.status === 'open'     ? 'ticket_reopened' :
         'ticket_updated'
 
-        await adminClient.from('notifications').insert({
+        await (adminClient.from('notifications') as any).insert({
           user_id:   existing.requester_id,
           ticket_id: ticketId,
           type:      notifType,
@@ -228,7 +224,7 @@ export async function updateTicket(
       parsed.data.assigned_to !== existing.assigned_to &&
       parsed.data.assigned_to !== null
     ) {
-      await adminClient.from('notifications').insert({
+      await (adminClient.from('notifications') as any).insert({
         user_id:   existing.requester_id,
         ticket_id: ticketId,
         type:      'ticket_assigned',
@@ -236,7 +232,7 @@ export async function updateTicket(
         message:   `Your ticket ${existing.ticket_number} has been assigned to a technician and is being reviewed.`,
         })
       }
-      await adminClient.from('audit_logs').insert({
+      await (adminClient.from('audit_logs') as any).insert({
         actor_id:    user.id,
         actor_email: user.email,
         action:      parsed.data.status !== existing.status ? 'status_changed' as const : 'ticket_updated' as const,
@@ -267,8 +263,10 @@ export async function updateArchiveLink(
   try {
     const { user, profile, supabase } = await getAuthenticatedUser()
 
-    const { data: ticketData } = await supabase
-      .from('tickets').select('requester_id').eq('id', ticketId).single()
+    const { data: ticketData } = await (supabase.from('tickets') as any)
+      .select('requester_id')
+      .eq('id', ticketId)
+      .single()
 
     const ticket = ticketData as Pick<Ticket, 'requester_id'> | null
     const isOwner = ticket?.requester_id === user.id
@@ -276,8 +274,7 @@ export async function updateArchiveLink(
 
     if (!isOwner && !isStaff) return { success: false, error: 'You do not have permission to update this ticket.' }
 
-    const { error } = await supabase
-      .from('tickets')
+    const { error } = await (supabase.from('tickets') as any)
       .update({ external_archive_link: link || null, archive_description: description || null })
       .eq('id', ticketId)
 
@@ -290,7 +287,6 @@ export async function updateArchiveLink(
   }
 }
 
-// ── addComment ────────────────────────────────────────────────────────────────
 export async function addComment(
   rawInput: CreateCommentInput
 ): Promise<ActionResult<{ commentId: string }>> {
@@ -305,16 +301,14 @@ export async function addComment(
     }
 
     // Fetch the ticket so we can notify the requester
-    const { data: ticketData } = await supabase
-      .from('tickets')
+    const { data: ticketData } = await (supabase.from('tickets') as any)
       .select('requester_id, ticket_number')
       .eq('id', parsed.data.ticket_id)
       .single()
 
     const ticketForComment = ticketData as Pick<Ticket, 'requester_id' | 'ticket_number'> | null
 
-    const { data: commentData, error } = await supabase
-      .from('comments')
+    const { data: commentData, error } = await (supabase.from('comments') as any)
       .insert({
         ticket_id:   parsed.data.ticket_id,
         author_id:   user.id,
@@ -330,11 +324,11 @@ export async function addComment(
     // Notify the requester when ICT staff posts a public (non-internal) comment
     const isStaff = ['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)
     const isPublicStaffComment = isStaff && !parsed.data.is_internal
-    const commentAuthorIsRequester = ticketForComment?.requester_id === session.user.id
+    const commentAuthorIsRequester = ticketForComment?.requester_id === user.id
 
     if (isPublicStaffComment && ticketForComment && !commentAuthorIsRequester) {
       const adminClient = createSupabaseAdminClient()
-      await adminClient.from('notifications').insert({
+      await (adminClient.from('notifications') as any).insert({
         user_id:   ticketForComment.requester_id,
         ticket_id: parsed.data.ticket_id,
         type:      'comment_added',
@@ -358,13 +352,13 @@ export async function recordUsageSnapshot(): Promise<ActionResult> {
     const adminClient = createSupabaseAdminClient()
 
     const [tickets, users, comments, notifs] = await Promise.all([
-      adminClient.from('tickets').select('id', { count: 'exact', head: true }),
-      adminClient.from('profiles').select('id', { count: 'exact', head: true }),
-      adminClient.from('comments').select('id', { count: 'exact', head: true }),
-      adminClient.from('notifications').select('id', { count: 'exact', head: true }),
+      (adminClient.from('tickets') as any).select('id', { count: 'exact', head: true }),
+      (adminClient.from('profiles') as any).select('id', { count: 'exact', head: true }),
+      (adminClient.from('comments') as any).select('id', { count: 'exact', head: true }),
+      (adminClient.from('notifications') as any).select('id', { count: 'exact', head: true }),
     ])
 
-    await adminClient.from('usage_snapshots').upsert({
+    await (adminClient.from('usage_snapshots') as any).upsert({
       snapshot_date:  new Date().toISOString().split('T')[0],
       total_tickets:  tickets.count  || 0,
       total_users:    users.count    || 0,

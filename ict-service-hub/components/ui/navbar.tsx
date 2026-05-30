@@ -40,52 +40,52 @@ const ADMIN_NAV = [
 
 const styles = {
   // Admin navbar
-  adminHeader:      "bg-slate-900 border-b border-slate-800 sticky top-0 z-30",
-  adminInner:       "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
-  adminRow:         "flex items-center justify-between h-16",
-  adminBrandLabel:  "text-xs text-amber-400 font-bold tracking-widest uppercase",
-  adminBrandTitle:  "text-white font-bold text-lg leading-none",
-  adminBadge:       "hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-amber-600/20 text-amber-400 text-xs font-bold border border-amber-600/30",
-  adminNav:         "hidden md:flex items-center gap-1",
-  adminLinkBase:    "px-3 py-2 rounded text-sm font-medium transition-colors",
-  adminLinkActive:  "bg-white/10 text-white",
+  adminHeader: "bg-slate-900 border-b border-slate-800 sticky top-0 z-30",
+  adminInner: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+  adminRow: "flex items-center justify-between h-16",
+  adminBrandLabel: "text-xs text-amber-400 font-bold tracking-widest uppercase",
+  adminBrandTitle: "text-white font-bold text-lg leading-none",
+  adminBadge: "hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-amber-600/20 text-amber-400 text-xs font-bold border border-amber-600/30",
+  adminNav: "hidden md:flex items-center gap-1",
+  adminLinkBase: "px-3 py-2 rounded text-sm font-medium transition-colors",
+  adminLinkActive: "bg-white/10 text-white",
   adminLinkDefault: "text-slate-300 hover:text-white hover:bg-white/5",
-  adminDivider:     "ml-4 pl-4 border-l border-white/10 flex items-center gap-2",
-  adminUsername:    "text-slate-300 text-sm hidden md:block",
-  adminSignOut:     "text-slate-400 hover:text-white text-sm transition-colors",
+  adminDivider: "ml-4 pl-4 border-l border-white/10 flex items-center gap-2",
+  adminUsername: "text-slate-300 text-sm hidden md:block",
+  adminSignOut: "text-slate-400 hover:text-white text-sm transition-colors",
 
   // Admin sidebar
-  adminSidebarLink:        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-  adminSidebarLinkActive:  "bg-white/10 text-white",
+  adminSidebarLink: "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+  adminSidebarLinkActive: "bg-white/10 text-white",
   adminSidebarLinkDefault: "text-slate-300 hover:text-white hover:bg-white/5",
 
   // Requester navbar
-  requesterHeader:      "bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm",
-  requesterInner:       "max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between",
-  requesterAvatar:      "h-9 w-9 rounded-full bg-slate-900 flex items-center justify-center text-amber-400 font-bold text-sm",
-  requesterBrandLabel:  "text-xs text-amber-600 font-bold tracking-wide",
-  requesterBrandTitle:  "text-slate-900 font-bold text-sm leading-none",
-  requesterNav:         "hidden md:flex items-center gap-1",
-  requesterLinkBase:    "px-3 py-2 text-sm rounded transition-colors",
-  requesterLinkActive:  "font-semibold text-slate-900 bg-slate-100",
+  requesterHeader: "bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm",
+  requesterInner: "max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between",
+  requesterAvatar: "h-9 w-9 rounded-full bg-slate-900 flex items-center justify-center text-amber-400 font-bold text-sm",
+  requesterBrandLabel: "text-xs text-amber-600 font-bold tracking-wide",
+  requesterBrandTitle: "text-slate-900 font-bold text-sm leading-none",
+  requesterNav: "hidden md:flex items-center gap-1",
+  requesterLinkBase: "px-3 py-2 text-sm rounded transition-colors",
+  requesterLinkActive: "font-semibold text-slate-900 bg-slate-100",
   requesterLinkDefault: "font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100",
-  requesterBellBase:    "h-10 w-10 flex items-center justify-center rounded-full transition-colors",
-  requesterBellActive:  "bg-slate-100",
+  requesterBellBase: "h-10 w-10 flex items-center justify-center rounded-full transition-colors",
+  requesterBellActive: "bg-slate-100",
   requesterBellDefault: "hover:bg-slate-100",
-  requesterBadge:       "absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[10px] font-bold",
-  requesterSignOut:     "ml-2 text-sm text-slate-400 hover:text-slate-600 transition-colors",
+  requesterBadge: "absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[10px] font-bold",
+  requesterSignOut: "ml-2 text-sm text-slate-400 hover:text-slate-600 transition-colors",
 
   // Requester sidebar
-  requesterSidebarLink:        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-  requesterSidebarLinkActive:  "font-semibold text-slate-900 bg-slate-100",
+  requesterSidebarLink: "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+  requesterSidebarLinkActive: "font-semibold text-slate-900 bg-slate-100",
   requesterSidebarLinkDefault: "font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50",
 
   // Shared hamburger / sidebar
-  hamburgerAdmin:     "md:hidden flex items-center justify-center h-10 w-10 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors",
+  hamburgerAdmin: "md:hidden flex items-center justify-center h-10 w-10 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors",
   hamburgerRequester: "md:hidden flex items-center justify-center h-10 w-10 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors",
-  overlay:            "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300",
-  sidebarAdmin:       "fixed top-0 right-0 h-full w-72 z-50 bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out md:hidden",
-  sidebarRequester:   "fixed top-0 right-0 h-full w-72 z-50 bg-white border-l border-slate-200 flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out md:hidden",
+  overlay: "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300",
+  sidebarAdmin: "fixed top-0 right-0 h-full w-72 z-50 bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out md:hidden",
+  sidebarRequester: "fixed top-0 right-0 h-full w-72 z-50 bg-white border-l border-slate-200 flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out md:hidden",
 } as const;
 
 // ─── Hamburger Icon ───────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ export default function Navbar({ profile, unreadCount = 0 }: NavbarProps) {
                 {ADMIN_NAV.map(({ href, label }) => {
                   const active = isActive(href);
                   return (
-                    <Link key={href} href={href} aria-current={active ? "page" : undefined}
+                    <Link key={href} href={href} prefetch={false} aria-current={active ? "page" : undefined}
                       className={`${styles.adminLinkBase} ${active ? styles.adminLinkActive : styles.adminLinkDefault}`}>
                       {label}
                     </Link>
@@ -156,7 +156,7 @@ export default function Navbar({ profile, unreadCount = 0 }: NavbarProps) {
                 })}
                 <div className={styles.adminDivider}>
                   <span className={styles.adminUsername}>{profile.full_name}</span>
-                  <Link href="/api/auth/signout" className={styles.adminSignOut}>Sign Out</Link>
+                  <Link href="/api/auth/signout" prefetch={false} className={styles.adminSignOut}>Sign Out</Link>
                 </div>
               </nav>
 
@@ -199,7 +199,7 @@ export default function Navbar({ profile, unreadCount = 0 }: NavbarProps) {
             {ADMIN_NAV.map(({ href, label, icon }) => {
               const active = isActive(href);
               return (
-                <Link key={href} href={href} aria-current={active ? "page" : undefined}
+                <Link key={href} href={href} prefetch={false} aria-current={active ? "page" : undefined}
                   className={`${styles.adminSidebarLink} ${active ? styles.adminSidebarLinkActive : styles.adminSidebarLinkDefault}`}>
                   <span className="text-base">{icon}</span>
                   {label}
@@ -209,7 +209,7 @@ export default function Navbar({ profile, unreadCount = 0 }: NavbarProps) {
           </nav>
 
           <div className="px-5 py-4 border-t border-slate-800">
-            <Link href="/api/auth/signout"
+            <Link href="/api/auth/signout" prefetch={false}
               className="flex items-center gap-3 text-slate-400 hover:text-white text-sm font-medium transition-colors">
               <span>🚪</span> Sign Out
             </Link>
@@ -241,7 +241,7 @@ export default function Navbar({ profile, unreadCount = 0 }: NavbarProps) {
             {REQUESTER_NAV.filter((l) => l.href !== "/notifications").map(({ href, label }) => {
               const active = isActive(href);
               return (
-                <Link key={href} href={href} aria-current={active ? "page" : undefined}
+                <Link key={href} href={href} prefetch={false} aria-current={active ? "page" : undefined}
                   className={`${styles.requesterLinkBase} ${active ? styles.requesterLinkActive : styles.requesterLinkDefault}`}>
                   {label}
                 </Link>
@@ -250,7 +250,7 @@ export default function Navbar({ profile, unreadCount = 0 }: NavbarProps) {
 
             {/* Notifications bell */}
             <div className="relative ml-2">
-              <Link href="/notifications" aria-label="Notifications"
+              <Link href="/notifications" prefetch={false} aria-label="Notifications"
                 aria-current={isActive("/notifications") ? "page" : undefined}
                 className={`${styles.requesterBellBase} ${isActive("/notifications") ? styles.requesterBellActive : styles.requesterBellDefault}`}>
                 <span className="text-xl">🔔</span>
@@ -262,13 +262,13 @@ export default function Navbar({ profile, unreadCount = 0 }: NavbarProps) {
               </Link>
             </div>
 
-            <Link href="/api/auth/signout" className={styles.requesterSignOut}>Sign Out</Link>
+            <Link href="/api/auth/signout" prefetch={false} className={styles.requesterSignOut}>Sign Out</Link>
           </nav>
 
           {/* Mobile: bell + hamburger */}
           <div className="flex items-center gap-1 md:hidden">
             <div className="relative">
-              <Link href="/notifications" aria-label="Notifications"
+              <Link href="/notifications" prefetch={false} aria-label="Notifications"
                 className={`${styles.requesterBellBase} ${isActive("/notifications") ? styles.requesterBellActive : styles.requesterBellDefault}`}>
                 <span className="text-xl">🔔</span>
                 {unreadCount > 0 && (
@@ -319,7 +319,7 @@ export default function Navbar({ profile, unreadCount = 0 }: NavbarProps) {
           {REQUESTER_NAV.map(({ href, label, icon }) => {
             const active = isActive(href);
             return (
-              <Link key={href} href={href} aria-current={active ? "page" : undefined}
+              <Link key={href} href={href} prefetch={false} aria-current={active ? "page" : undefined}
                 className={`${styles.requesterSidebarLink} ${active ? styles.requesterSidebarLinkActive : styles.requesterSidebarLinkDefault}`}>
                 <span className="text-base">{icon}</span>
                 {label}
@@ -334,7 +334,7 @@ export default function Navbar({ profile, unreadCount = 0 }: NavbarProps) {
         </nav>
 
         <div className="px-5 py-4 border-t border-slate-100">
-          <Link href="/api/auth/signout"
+          <Link href="/api/auth/signout" prefetch={false}
             className="flex items-center gap-3 text-slate-400 hover:text-slate-700 text-sm font-medium transition-colors">
             <span>🚪</span> Sign Out
           </Link>
