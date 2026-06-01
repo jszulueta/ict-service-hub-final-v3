@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
+import { z } from 'zod' 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createTicketSchema, type CreateTicketInput } from '@/lib/validations/schemas'
 import { createTicket } from '@/lib/actions/tickets'
@@ -41,7 +42,7 @@ export function TicketSubmitForm() {
     watch,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreateTicketInput>({
+  } = useForm<any>({
     resolver: zodResolver(createTicketSchema),
     defaultValues: {
       priority: 'medium',
@@ -52,9 +53,9 @@ export function TicketSubmitForm() {
   const selectedCategory = watch('category')
   const isEventCategory = EVENT_CATEGORIES.includes(selectedCategory)
 
-  const onSubmit = async (data: CreateTicketInput) => {
+  const onSubmit = async (data: any) => {
     setServerError(null)
-    const result = await createTicket(data)
+    const result = await createTicket(data as CreateTicketInput)
 
     if (!result.success) {
       setServerError(result.error)
@@ -171,8 +172,10 @@ export function TicketSubmitForm() {
                 )
               })}
             </div>
-            {errors.category && (
-              <p className="text-sm text-red-600 mt-2" id="category-error" role="alert">{errors.category.message}</p>
+            {errors.category?.message && (
+              <p className="text-sm text-red-600 mt-2" id="category-error" role="alert">
+                {String(errors.category.message)}
+              </p>
             )}
           </fieldset>
 
@@ -186,7 +189,7 @@ export function TicketSubmitForm() {
               <Field
                 label="Subject / Title"
                 htmlFor="title"
-                error={errors.title?.message}
+                error={errors.title?.message as any}
                 hint="Brief summary of your request (e.g., 'Projector not working in chapel')"
                 required
               >
@@ -202,7 +205,7 @@ export function TicketSubmitForm() {
               <Field
                 label="Full Description"
                 htmlFor="description"
-                error={errors.description?.message}
+                error={errors.description?.message as any}
                 hint="Provide as much detail as possible to help us assist you quickly."
                 required
               >
@@ -219,7 +222,7 @@ export function TicketSubmitForm() {
               <Field
                 label="Priority Level"
                 htmlFor="priority"
-                error={errors.priority?.message}
+                error={errors.priority?.message as any}
                 required
               >
                 <Select
@@ -244,7 +247,7 @@ export function TicketSubmitForm() {
                 <Field
                   label="Event Name"
                   htmlFor="event_name"
-                  error={errors.event_name?.message}
+                  error={errors.event_name?.message as any}
                 >
                   <Input
                     id="event_name"
@@ -255,7 +258,7 @@ export function TicketSubmitForm() {
                 </Field>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Event Date" htmlFor="event_date" error={errors.event_date?.message}>
+                  <Field label="Event Date" htmlFor="event_date" error={errors.event_date?.message as any}>
                     <Input
                       id="event_date"
                       type="date"
@@ -264,7 +267,7 @@ export function TicketSubmitForm() {
                     />
                   </Field>
 
-                  <Field label="Event Location / Venue" htmlFor="event_location" error={errors.event_location?.message}>
+                  <Field label="Event Location / Venue" htmlFor="event_location" error={errors.event_location?.message as any}>
                     <Input
                       id="event_location"
                       placeholder="e.g., Cathedral of the Risen Christ..."
@@ -277,7 +280,7 @@ export function TicketSubmitForm() {
                 <Field
                   label="Additional Notes"
                   htmlFor="event_notes"
-                  error={errors.event_notes?.message}
+                  error={errors.event_notes?.message as any}
                   hint="e.g., Number of cameras needed, streaming platform, expected attendees"
                 >
                   <Textarea
@@ -306,7 +309,7 @@ export function TicketSubmitForm() {
               <Field
                 label="External Archive Link"
                 htmlFor="external_archive_link"
-                error={errors.external_archive_link?.message}
+                error={errors.external_archive_link?.message as any}
                 hint="Paste a Google Drive, OneDrive, or Dropbox shared link"
               >
                 <Input
@@ -320,7 +323,7 @@ export function TicketSubmitForm() {
               <Field
                 label="Archive Description"
                 htmlFor="archive_description"
-                error={errors.archive_description?.message}
+                error={errors.archive_description?.message as any}
               >
                 <Input
                   id="archive_description"
