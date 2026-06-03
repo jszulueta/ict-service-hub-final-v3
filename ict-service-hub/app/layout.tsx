@@ -2,6 +2,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import NextTopLoader from 'nextjs-toploader'
+import { FetchInterceptor } from '@/components/FetchInterceptor'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -28,6 +30,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en-PH" className={inter.variable}>
       <body className="bg-slate-50 text-slate-900 antialiased font-sans">
+        <NextTopLoader color="#0ea5e9" showSpinner={false} />
+        <FetchInterceptor />
         {children}
       </body>
     </html>
