@@ -66,7 +66,7 @@ export default function SignupPage() {
           <div className="text-5xl mb-4">📬</div>
           <h2 className="font-display text-2xl font-bold text-navy-950 mb-2">Check Your Email</h2>
           <p className="text-slate-600 mb-6">
-            A confirmation link has been sent to your email address. Click it to activate your account, then return here to sign in.
+            Your account has been successfully created! You may now proceed to logging in your account.
           </p>
           <Link href="/auth/login" className="inline-flex items-center gap-2 bg-navy-950 text-white px-6 py-3 rounded-btn font-semibold hover:bg-navy-800 transition-colors">
             Go to Sign In
