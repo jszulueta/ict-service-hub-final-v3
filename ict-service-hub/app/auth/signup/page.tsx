@@ -64,7 +64,7 @@ export default function SignupPage() {
       <div className="min-h-screen bg-liturgical-white flex items-center justify-center px-4">
         <div className="w-full max-w-md text-center bg-white rounded-card border border-green-200 shadow-card p-10">
           <div className="text-5xl mb-4">📬</div>
-          <h2 className="font-display text-2xl font-bold text-navy-950 mb-2">Check Your Email</h2>
+          <h2 className="font-display text-2xl font-bold text-navy-950 mb-2">Account Created!</h2>
           <p className="text-slate-600 mb-6">
             Your account has been successfully created! You may now proceed to logging in your account.
           </p>
