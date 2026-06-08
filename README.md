@@ -2,7 +2,7 @@
 ## Complete Setup & Deployment Guide
 
 > **Production-grade internal platform** for ICT support and media service requests.  
-> Built with Next.js 15 · TypeScript · Tailwind CSS · Supabase · Resend  
+> Built with Next.js 16 · TypeScript · Tailwind CSS · Supabase · Resend  
 > Optimized for **Supabase Free Tier** + **Vercel Hobby Plan**
 
 ---
@@ -29,7 +29,7 @@ Before starting, ensure you have the following installed and accounts ready:
 ### Software Required
 | Tool | Version | Install |
 |------|---------|---------|
-| Node.js | v20 LTS or higher | https://nodejs.org |
+| Node.js | v22.10 LTS or higher | https://nodejs.org |
 | npm | v10+ (comes with Node) | — |
 | Git | Any recent version | https://git-scm.com |
 
@@ -47,71 +47,80 @@ Before starting, ensure you have the following installed and accounts ready:
 
 ## 2. Project Structure
 
-```
+```text
 ict-service-hub/
 ├── app/
+│   ├── (admin)/                    # Admin portal routes (ICT staff)
+│   │   ├── admin/
+│   │   │   ├── audit/              # Audit logs
+│   │   │   ├── page.tsx            # Admin dashboard
+│   │   │   ├── spam/               # Spam monitoring
+│   │   │   ├── tickets/            # All tickets (filterable)
+│   │   │   └── users/              # User management
+│   │   └── layout.tsx              # Admin layout wrapper
+│   ├── api/                        # API routes
+│   │   ├── admin/
+│   │   │   └── users/              # User management API
+│   │   └── auth/
+│   │       └── signout/            # Signout API endpoint
+│   ├── auth/                       # Authentication routes
+│   │   ├── callback/route.ts       # Supabase OAuth callback
+│   │   ├── forgot-password/page.tsx # Forgot password page
+│   │   ├── login/page.tsx          # Login page
+│   │   ├── reset-password/page.tsx # Reset password page
+│   │   ├── signup/page.tsx         # Signup page
+│   │   └── suspended/page.tsx      # Suspended account page
 │   ├── (user)/                     # User portal routes (requesters)
 │   │   ├── dashboard/page.tsx      # User dashboard
-│   │   ├── tickets/
-│   │   │   ├── page.tsx            # All my tickets
-│   │   │   ├── new/page.tsx        # Submit new ticket
-│   │   │   └── [id]/page.tsx       # Ticket detail
-│   │   ├── notifications/page.tsx
-│   │   └── profile/page.tsx
-│   │
-│   ├── (admin)/                    # Admin portal routes (ICT staff)
-│   │   └── admin/
-│   │       ├── page.tsx            # Admin dashboard
-│   │       ├── tickets/
-│   │       │   ├── page.tsx        # All tickets (filterable)
-│   │       │   └── [id]/page.tsx   # Ticket management
-│   │       ├── users/page.tsx      # User management
-│   │       ├── audit/page.tsx      # Audit logs
-│   │       └── spam/page.tsx       # Spam monitoring
-│   │
-│   ├── auth/
-│   │   ├── login/page.tsx
-│   │   ├── signup/page.tsx
-│   │   ├── forgot-password/page.tsx
-│   │   ├── reset-password/page.tsx
-│   │   └── callback/route.ts       # Supabase OAuth callback
-│   │
-│   ├── api/
-│   │   └── auth/signout/route.ts
-│   │
+│   │   ├── layout.tsx              # User layout wrapper
+│   │   ├── notifications/page.tsx  # User notifications
+│   │   └── tickets/
+│   │       ├── [id]/               # Ticket detail
+│   │       ├── new/                # Submit new ticket
+│   │       └── page.tsx            # All my tickets
+│   ├── globals.css                 # Global CSS styles
 │   ├── layout.tsx                  # Root layout
 │   └── page.tsx                    # Landing/redirect page
 │
-├── components/
-│   ├── ui/index.tsx                # Shared accessible components
-│   ├── tickets/
-│   │   ├── TicketSubmitForm.tsx
-│   │   └── TicketCard.tsx
-│   └── admin/
-│       ├── UsageMonitor.tsx
-│       └── TicketTable.tsx
+├── components/                     # Reusable UI components
+│   ├── admin/                      # Admin-specific components
+│   │   ├── TicketActions.tsx       # Ticket action controls
+│   │   ├── TicketTable.tsx         # Admin ticket table
+│   │   ├── UsageMonitor.tsx        # System usage stats
+│   │   └── UserActions.tsx         # User administration controls
+│   ├── FetchInterceptor.tsx        # Global fetch interceptor
+│   ├── tickets/                    # Ticket-related components
+│   │   └── TicketSubmitForm.tsx    # Form to submit tickets
+│   ├── ui/                         # Base UI components
+│   │   ├── index.tsx               # Shared accessible components
+│   │   └── navbar.tsx              # Application navigation bar
+│   └── user/                       # User-specific components
+│       └── UserCommentBox.tsx      # Ticket comment input
 │
-├── lib/
-│   ├── supabase/
-│   │   ├── server.ts               # Server-side client
-│   │   └── client.ts               # Browser-side client
+├── lib/                            # Core logic and utilities
 │   ├── actions/
-│   │   └── tickets.ts              # Server actions
+│   │   └── tickets.ts              # Server actions for tickets
 │   ├── email/
 │   │   └── resend.ts               # Email templates
+│   ├── supabase/
+│   │   ├── client.ts               # Browser-side client
+│   │   └── server.ts               # Server-side client
+│   ├── utility/
+│   │   └── crypto.ts               # Utility functions for cryptography
 │   └── validations/
 │       └── schemas.ts              # Zod schemas
 │
-├── types/
+├── types/                          # Type definitions
+│   ├── css.d.ts                    # CSS Module typings
 │   └── database.ts                 # TypeScript types
 │
-├── supabase/
+├── supabase/                       # Supabase configuration
 │   └── schema.sql                  # Full DB schema + RLS
 │
 ├── middleware.ts                   # RBAC + rate limiting
-├── tailwind.config.ts
-├── package.json
-└── .env.example
+├── tailwind.config.ts              # Tailwind CSS configuration
+├── package.json                    # Dependencies and scripts
+└── .env.example                    # Example environment variables
 ```
 
 ---
