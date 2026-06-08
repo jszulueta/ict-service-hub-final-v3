@@ -537,7 +537,7 @@ AND closed_at < NOW() - INTERVAL '1 year';
 Email: ict@dioceseofkalookan.org  
 
 **Built with:**
-- [Next.js](https://nextjs.org) 15 App Router
+- [Next.js](https://nextjs.org) 16 App Router
 - [Supabase](https://supabase.com) Auth + PostgreSQL
 - [Tailwind CSS](https://tailwindcss.com)
 - [Resend](https://resend.com)
