@@ -61,12 +61,12 @@ export default function SignupPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-liturgical-white flex items-center justify-center px-4">
+      <div className="flex flex-grow items-center justify-center px-4 pt-24 pb-12">
         <div className="w-full max-w-md text-center bg-white rounded-card border border-green-200 shadow-card p-10">
           <div className="text-5xl mb-4">📬</div>
-          <h2 className="font-display text-2xl font-bold text-navy-950 mb-2">Account Created!</h2>
+          <h2 className="font-display text-2xl font-bold text-navy-950 mb-2">Check email</h2>
           <p className="text-slate-600 mb-6">
-            Your account has been successfully created! You may now proceed to logging in your account.
+            Your account has been successfully created. Please verify your email address to continue using this account.
           </p>
           <Link href="/auth/login" className="inline-flex items-center gap-2 bg-navy-950 text-white px-6 py-3 rounded-btn font-semibold hover:bg-navy-800 transition-colors">
             Go to Sign In
@@ -77,7 +77,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-liturgical-white flex items-center justify-center px-4 py-12">
+    <div className="flex flex-grow items-center justify-center px-4 py-12 pt-24">
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <p className="text-gold-600 font-bold text-xs tracking-widest uppercase mb-1">Diocese of Kalookan</p>

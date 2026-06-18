@@ -14,6 +14,7 @@ const PUBLIC_ROUTES = [
   '/auth/callback',
   '/auth/suspended',
   '/auth/verify',
+  '/guest',
 ]
 
 const ADMIN_ROLES = ['ict_staff', 'ict_admin', 'super_admin']

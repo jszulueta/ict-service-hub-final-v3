@@ -67,8 +67,8 @@ export default async function TicketDetailPage({
 
   const commentList = rawComments.map((c) => ({
     ...c,
-    author: authorMap[c.author_id] ?? null,
-  })) as (Comment & { author: { full_name: string; role: string } | null })[]
+    author: c.author_id ? authorMap[c.author_id] ?? null : null,
+  })) as (Comment & { author: { full_name: string; role: string } | null, guest_name?: string | null })[]
 
   const t = ticket as Ticket & {
     requester: { full_name: string; email: string }
@@ -157,7 +157,7 @@ export default async function TicketDetailPage({
                     <div key={c.id} className="px-6 py-4">
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="text-sm font-semibold text-navy-950">
-                          {c.author?.full_name ?? 'Unknown user'}
+                          {c.author?.full_name ?? c.guest_name ?? 'Guest'}
                         </span>
 
                         {['ict_staff', 'ict_admin', 'super_admin'].includes(

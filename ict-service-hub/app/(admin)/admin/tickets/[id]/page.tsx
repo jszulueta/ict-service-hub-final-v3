@@ -40,7 +40,7 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
   const { data: commentsData } = await supabase
     .from('comments').select('*, author:profiles!comments_author_id_fkey(full_name, role)')
     .eq('ticket_id', id).order('created_at', { ascending: true })
-  const comments = (commentsData || []) as (Comment & { author: { full_name: string; role: string } })[]
+  const comments = (commentsData || []) as (Comment & { author: { full_name: string; role: string } | null, guest_name: string | null })[]
 
   // Status history
   const { data: historyData } = await supabase
@@ -131,8 +131,8 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
                 ) : comments.map((c) => (
                   <div key={c.id} className={`px-6 py-4 ${c.is_internal ? 'bg-yellow-50' : ''}`}>
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-sm font-semibold text-slate-900">{c.author.full_name}</span>
-                      {['ict_staff','ict_admin','super_admin'].includes(c.author.role) && (
+                      <span className="text-sm font-semibold text-slate-900">{c.author?.full_name || c.guest_name || 'Guest'}</span>
+                      {c.author && ['ict_staff','ict_admin','super_admin'].includes(c.author.role) && (
                         <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">ICT Team</span>
                       )}
                       {c.is_internal && (

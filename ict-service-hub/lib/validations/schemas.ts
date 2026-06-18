@@ -67,6 +67,19 @@ export const createTicketSchema = z.object({
 
 export type CreateTicketInput = z.infer<typeof createTicketSchema>
 
+export const createGuestTicketSchema = createTicketSchema.extend({
+  guest_name: sanitizedString(2, 100, 'Full name'),
+  guest_email: z.string().email('Please enter a valid email address.').toLowerCase(),
+  guest_phone: z
+    .string()
+    .regex(/^[0-9+\-\s()]{7,20}$/, 'Please enter a valid phone number.')
+    .optional()
+    .or(z.literal('')),
+})
+
+export type CreateGuestTicketInput = z.infer<typeof createGuestTicketSchema>
+
+
 // ============================================================
 // TICKET UPDATE (admin)
 // ============================================================

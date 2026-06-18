@@ -90,7 +90,10 @@ CREATE INDEX idx_profiles_is_active ON profiles(is_active);
 CREATE TABLE tickets (
   id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   ticket_number   TEXT UNIQUE NOT NULL,
-  requester_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  requester_id    UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+  guest_name      TEXT,
+  guest_email     TEXT,
+  guest_phone     TEXT,
   assigned_to     UUID REFERENCES profiles(id) ON DELETE SET NULL,
   title           TEXT NOT NULL,
   description     TEXT NOT NULL,
@@ -186,7 +189,8 @@ CREATE INDEX idx_status_history_ticket ON ticket_status_history(ticket_id);
 CREATE TABLE comments (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   ticket_id   UUID NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
-  author_id   UUID NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  author_id   UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+  guest_name  TEXT,
   body        TEXT NOT NULL,
   is_internal BOOLEAN NOT NULL DEFAULT FALSE, -- admin-only notes
   is_edited   BOOLEAN NOT NULL DEFAULT FALSE,
@@ -423,6 +427,12 @@ CREATE POLICY "Users can create tickets"
     )
   );
 
+CREATE POLICY "Guests can create tickets"
+  ON tickets FOR INSERT WITH CHECK (
+    requester_id IS NULL 
+    AND guest_email IS NOT NULL
+  );
+
 CREATE POLICY "Users can update their own pending tickets"
   ON tickets FOR UPDATE USING (
     requester_id = auth.uid()
@@ -488,3 +498,61 @@ CREATE POLICY "Only admins can view usage snapshots"
 -- Run after creating the super admin user in Supabase Auth
 -- UPDATE profiles SET role = 'super_admin' WHERE email = 'admin@dioceseofkalookan.org';
 -- ============================================================
+
+-- Create a secure function to retrieve a guest ticket by its tracking ID
+CREATE OR REPLACE FUNCTION get_guest_ticket(p_ticket_number TEXT)
+RETURNS JSON AS $$
+DECLARE
+  v_ticket RECORD;
+  v_history JSON;
+  v_comments JSON;
+BEGIN
+  -- Get the ticket details (only if it's a guest ticket)
+  SELECT id, ticket_number, title, description, category, status, priority, guest_name, created_at, resolution_notes
+  INTO v_ticket
+  FROM tickets
+  WHERE ticket_number = p_ticket_number
+  AND requester_id IS NULL;
+
+  -- If not found, return NULL
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+
+  -- Get the ticket's status history
+  SELECT COALESCE(
+    json_agg(
+      json_build_object(
+        'old_status', old_status,
+        'new_status', new_status,
+        'created_at', created_at
+      ) ORDER BY created_at DESC
+    ), '[]'::json
+  ) INTO v_history
+  FROM ticket_status_history
+  WHERE ticket_id = v_ticket.id;
+
+  -- Get the ticket's public comments
+  SELECT COALESCE(
+    json_agg(
+      json_build_object(
+        'id', c.id,
+        'body', c.body,
+        'created_at', c.created_at,
+        'guest_name', c.guest_name,
+        'author', CASE WHEN p.id IS NOT NULL THEN json_build_object('full_name', p.full_name, 'role', p.role) ELSE NULL END
+      ) ORDER BY c.created_at ASC
+    ), '[]'::json
+  ) INTO v_comments
+  FROM comments c
+  LEFT JOIN profiles p ON c.author_id = p.id
+  WHERE c.ticket_id = v_ticket.id AND c.is_internal = FALSE;
+
+  -- Return the ticket, history, and comments as a JSON object
+  RETURN json_build_object(
+    'ticket', row_to_json(v_ticket),
+    'history', v_history,
+    'comments', v_comments
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

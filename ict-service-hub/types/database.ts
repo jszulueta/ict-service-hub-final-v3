@@ -62,7 +62,8 @@ export interface Ticket {
 export interface Comment {
   id: string
   ticket_id: string
-  author_id: string
+  author_id: string | null
+  guest_name: string | null
   body: string
   is_internal: boolean
   is_edited: boolean
@@ -199,7 +200,8 @@ export type Database = {
         Insert: {
           id?: string
           ticket_id: string
-          author_id: string
+          author_id?: string | null
+          guest_name?: string | null
           body: string
           is_internal?: boolean
           is_edited?: boolean
@@ -207,6 +209,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          author_id?: string | null
+          guest_name?: string | null
           body?: string
           is_internal?: boolean
           is_edited?: boolean
