@@ -100,8 +100,8 @@ function LoginForm() {
 // 2. Wrap the form in a Suspense boundary in the default export
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-liturgical-white flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div className="flex flex-grow items-center justify-center px-4">
+      <div className="w-full max-w-md pt-24 pb-12">
         {/* Header */}
         <div className="text-center mb-8">
           <p className="text-gold-600 font-bold text-xs tracking-widest uppercase mb-1">Diocese of Kalookan</p>
