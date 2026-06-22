@@ -145,12 +145,12 @@ export default function GuestTrackTicket() {
             value={ticketNumber}
             onChange={(e) => setTicketNumber(e.target.value.toUpperCase())}
             placeholder="TKT-YY-XXXXX"
-            className="w-full pl-12 pr-32 py-4 rounded-xl border-slate-300 focus:border-navy-500 focus:ring-navy-500 shadow-sm text-lg font-mono uppercase bg-white"
+            className="w-full pl-12 pr-32 py-4 rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 shadow-sm text-lg font-mono uppercase bg-white"
           />
           <button
             type="submit"
             disabled={isSearching || !ticketNumber}
-            className="absolute right-2 top-2 bottom-2 bg-navy-900 text-white px-6 rounded-lg font-medium hover:bg-navy-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="absolute right-2 top-2 bottom-2 bg-brand-600 text-white px-6 rounded-lg font-medium hover:bg-brand-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             <span className="hidden sm:inline">Track</span>
@@ -172,7 +172,7 @@ export default function GuestTrackTicket() {
             <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-6">
               <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-6 border-b border-slate-100">
                 <div>
-                  <h2 className="text-2xl font-bold text-navy-900 font-mono mb-1">{ticketResult.ticket.ticket_number}</h2>
+                  <h2 className="text-2xl font-bold text-brand-700 font-mono mb-1">{ticketResult.ticket.ticket_number}</h2>
                   <p className="text-slate-500 text-sm flex items-center gap-1">
                     <Calendar className="w-4 h-4" /> 
                     Requested on {new Date(ticketResult.ticket.created_at).toLocaleDateString()}
@@ -206,8 +206,8 @@ export default function GuestTrackTicket() {
 
             {/* Comments Section */}
             <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-6 mt-8">
-              <h3 className="text-lg font-bold text-navy-900 mb-6 flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-gold-500" />
+              <h3 className="text-lg font-bold text-brand-900 mb-6 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-brand-500" />
                 Discussion
               </h3>
               
@@ -215,13 +215,13 @@ export default function GuestTrackTicket() {
                 {ticketResult.comments && ticketResult.comments.length > 0 ? (
                   ticketResult.comments.map((comment) => (
                     <div key={comment.id} className={`flex flex-col ${comment.author ? 'items-start' : 'items-end'}`}>
-                      <div className={`max-w-[85%] rounded-2xl px-5 py-4 ${comment.author ? 'bg-slate-50 border border-slate-200 rounded-tl-sm' : 'bg-navy-50 border border-navy-100 rounded-tr-sm'}`}>
+                      <div className={`max-w-[85%] rounded-2xl px-5 py-4 ${comment.author ? 'bg-slate-50 border border-slate-200 rounded-tl-sm' : 'bg-brand-50 border border-brand-100 rounded-tr-sm'}`}>
                         <div className={`flex items-center gap-2 mb-1 ${comment.author ? '' : 'justify-end'}`}>
                           <span className="font-semibold text-sm text-slate-900">
                             {comment.author ? comment.author.full_name : (comment.guest_name || 'Guest')}
                           </span>
                           {comment.author && (
-                            <span className="text-[10px] uppercase tracking-wider font-bold bg-navy-100 text-navy-700 px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] uppercase tracking-wider font-bold bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full">
                               Staff
                             </span>
                           )}
@@ -249,14 +249,14 @@ export default function GuestTrackTicket() {
                   value={commentBody}
                   onChange={(e) => setCommentBody(e.target.value)}
                   placeholder="Type a message to the support team..."
-                  className="w-full min-h-[100px] rounded-xl border-slate-300 focus:border-navy-500 focus:ring-navy-500 shadow-sm resize-y p-4 pr-16 bg-slate-50"
+                  className="w-full min-h-[100px] rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 shadow-sm resize-y p-4 pr-16 bg-slate-50"
                   disabled={isCommenting}
                   required
                 />
                 <button
                   type="submit"
                   disabled={isCommenting || !commentBody.trim()}
-                  className="absolute bottom-4 right-4 p-2 bg-navy-900 text-white rounded-lg hover:bg-navy-800 disabled:opacity-50 transition-colors"
+                  className="absolute bottom-4 right-4 p-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 transition-colors"
                 >
                   {isCommenting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>
@@ -267,8 +267,8 @@ export default function GuestTrackTicket() {
           {/* Timeline */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-6 sticky top-24">
-              <h3 className="text-lg font-bold text-navy-900 mb-6 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-gold-500" />
+              <h3 className="text-lg font-bold text-brand-900 mb-6 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-brand-500" />
                 Status History
               </h3>
               

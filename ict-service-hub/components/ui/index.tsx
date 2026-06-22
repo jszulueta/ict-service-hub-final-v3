@@ -17,11 +17,11 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary:   'bg-navy-950 hover:bg-navy-800 text-white border-transparent focus-visible:ring-navy-950',
-  secondary: 'bg-white hover:bg-slate-50 text-navy-950 border-slate-300 hover:border-slate-400 focus-visible:ring-navy-950',
-  ghost:     'bg-transparent hover:bg-slate-100 text-navy-950 border-transparent focus-visible:ring-navy-950',
+  primary:   'bg-brand-600 hover:bg-brand-700 text-white border-transparent focus-visible:ring-brand-600',
+  secondary: 'bg-white hover:bg-slate-50 text-brand-900 border-slate-300 hover:border-slate-400 focus-visible:ring-brand-600',
+  ghost:     'bg-transparent hover:bg-slate-100 text-brand-900 border-transparent focus-visible:ring-brand-600',
   danger:    'bg-red-600 hover:bg-red-700 text-white border-transparent focus-visible:ring-red-600',
-  gold:      'bg-amber-600 hover:bg-amber-700 text-white border-transparent focus-visible:ring-amber-600',
+  gold:      'bg-brand-500 hover:bg-brand-600 text-white border-transparent focus-visible:ring-brand-500',
 }
 
 const buttonSizes: Record<ButtonSize, string> = {
@@ -86,7 +86,7 @@ export function Field({ label, htmlFor, error, hint, required, children }: Field
     <div className="flex flex-col gap-1.5">
       <label htmlFor={htmlFor} className="text-sm font-semibold text-slate-800">
         {label}
-        {required && <span className="text-amber-600 ml-1" aria-label="required">*</span>}
+        {required && <span className="text-brand-600 ml-1" aria-label="required">*</span>}
       </label>
       {children}
       {hint && !error && <p className="text-sm text-slate-500">{hint}</p>}
@@ -114,7 +114,7 @@ export function Input({ error, className = '', ...props }: InputProps) {
       className={[
         'w-full h-11 px-4 rounded-lg border text-base text-slate-900 bg-white',
         'placeholder:text-slate-400 transition-colors duration-150',
-        'focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent',
+        'focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent',
         'disabled:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70',
         error
           ? 'border-red-400 focus:ring-red-400 bg-red-50'
@@ -138,7 +138,7 @@ export function Textarea({ error, className = '', ...props }: TextareaProps) {
       className={[
         'w-full px-4 py-3 rounded-lg border text-base text-slate-900 bg-white resize-y min-h-[120px]',
         'placeholder:text-slate-400 transition-colors duration-150',
-        'focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent',
+        'focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent',
         'disabled:bg-slate-100 disabled:cursor-not-allowed',
         error
           ? 'border-red-400 focus:ring-red-400 bg-red-50'
@@ -164,7 +164,7 @@ export function Select({ error, options, placeholder, className = '', ...props }
       className={[
         'w-full h-11 px-4 rounded-lg border text-base text-slate-900 bg-white',
         'transition-colors duration-150 pr-10',
-        'focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent',
+        'focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent',
         'disabled:bg-slate-100 disabled:cursor-not-allowed',
         error
           ? 'border-red-400 focus:ring-red-400 bg-red-50'
@@ -313,6 +313,10 @@ export function TicketCardSkeleton() {
     </div>
   )
 }
+
+// ── GuestNavbar ──────────────────────────────────────────────────────────────
+
+export { GuestNavbar } from './GuestNavbar'
 
 // ── PageHeader ───────────────────────────────────────────────────────────────
 

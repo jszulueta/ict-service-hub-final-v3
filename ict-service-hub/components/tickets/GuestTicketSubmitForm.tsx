@@ -71,11 +71,11 @@ export function GuestTicketSubmitForm() {
       <div className="max-w-2xl mx-auto animate-fade-in">
         <div className="bg-white rounded-card border border-green-200 shadow-card p-8 text-center">
           <div className="text-5xl mb-4" aria-hidden="true">✅</div>
-          <h2 className="font-display text-2xl font-bold text-navy-950 mb-2">
+          <h2 className="font-display text-2xl font-bold text-brand-900 mb-2">
             Request Submitted Successfully
           </h2>
           {ticketNumber && (
-            <div className="inline-flex items-center gap-2 bg-navy-950 text-white px-4 py-2 rounded-btn text-sm font-mono font-bold mb-4">
+            <div className="inline-flex items-center gap-2 bg-brand-950 text-white px-4 py-2 rounded-btn text-sm font-mono font-bold mb-4">
               <span aria-hidden="true">🎟</span>
               {ticketNumber}
             </div>
@@ -111,10 +111,10 @@ export function GuestTicketSubmitForm() {
       {/* Form Card */}
       <div className="bg-white rounded-card border border-liturgical-muted shadow-card overflow-hidden">
         {/* Header */}
-        <div className="bg-admin-header px-6 py-5">
+        <div className="bg-brand-600 px-6 py-5">
           <h2 className="font-display text-xl font-bold text-white">Submit a Service Request</h2>
-          <p className="text-slate-400 text-sm mt-0.5">
-            Fill in the details below. Fields marked with <span className="text-gold-400">*</span> are required.
+          <p className="text-slate-200 text-sm mt-0.5">
+            Fill in the details below. Fields marked with <span className="text-brand-300">*</span> are required.
           </p>
         </div>
 
@@ -128,8 +128,8 @@ export function GuestTicketSubmitForm() {
 
           {/* ---- GUEST INFO ---- */}
           <fieldset>
-            <legend className="text-base font-bold text-navy-950 mb-3 flex items-center gap-2">
-              <span className="h-6 w-6 rounded-full bg-navy-950 text-white text-xs flex items-center justify-center font-bold" aria-hidden="true">1</span>
+            <legend className="text-base font-bold text-brand-900 mb-3 flex items-center gap-2">
+              <span className="h-6 w-6 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center font-bold" aria-hidden="true">1</span>
               Personal Information
             </legend>
             <div className="space-y-4">
@@ -184,8 +184,8 @@ export function GuestTicketSubmitForm() {
 
           {/* ---- SERVICE TYPE ---- */}
           <fieldset>
-            <legend className="text-base font-bold text-navy-950 mb-3 flex items-center gap-2">
-              <span className="h-6 w-6 rounded-full bg-navy-950 text-white text-xs flex items-center justify-center font-bold" aria-hidden="true">2</span>
+            <legend className="text-base font-bold text-brand-900 mb-3 flex items-center gap-2">
+              <span className="h-6 w-6 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center font-bold" aria-hidden="true">2</span>
               Service Type
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -204,7 +204,7 @@ export function GuestTicketSubmitForm() {
                     className={[
                       'flex items-center gap-3 p-4 rounded-btn border-2 cursor-pointer transition-all duration-150',
                       isChecked
-                        ? 'border-navy-950 bg-navy-50 shadow-navy-glow'
+                        ? 'border-brand-600 bg-brand-50 shadow-sm'
                         : 'border-slate-200 hover:border-slate-400 bg-white',
                     ].join(' ')}
                   >
@@ -216,11 +216,11 @@ export function GuestTicketSubmitForm() {
                       aria-describedby={errors.category ? 'category-error' : undefined}
                     />
                     <span className="text-2xl" aria-hidden="true">{icons[opt.value]}</span>
-                    <span className={`text-sm font-semibold ${isChecked ? 'text-navy-950' : 'text-slate-600'}`}>
+                    <span className={`text-sm font-semibold ${isChecked ? 'text-brand-900' : 'text-slate-600'}`}>
                       {opt.label}
                     </span>
                     {isChecked && (
-                      <span className="ml-auto text-navy-950" aria-hidden="true">✓</span>
+                      <span className="ml-auto text-brand-600" aria-hidden="true">✓</span>
                     )}
                   </label>
                 )
@@ -235,8 +235,8 @@ export function GuestTicketSubmitForm() {
 
           {/* ---- REQUEST DETAILS ---- */}
           <fieldset>
-            <legend className="text-base font-bold text-navy-950 mb-3 flex items-center gap-2">
-              <span className="h-6 w-6 rounded-full bg-navy-950 text-white text-xs flex items-center justify-center font-bold" aria-hidden="true">3</span>
+            <legend className="text-base font-bold text-brand-900 mb-3 flex items-center gap-2">
+              <span className="h-6 w-6 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center font-bold" aria-hidden="true">3</span>
               Request Details
             </legend>
             <div className="space-y-4">
@@ -291,11 +291,11 @@ export function GuestTicketSubmitForm() {
 
           {/* ---- EVENT DETAILS (conditional) ---- */}
           {isEventCategory && (
-            <fieldset className="animate-fade-in border border-gold-200 rounded-card p-5 bg-gold-50">
-              <legend className="text-base font-bold text-gold-800 mb-3 flex items-center gap-2 px-1">
+            <fieldset className="animate-fade-in border border-brand-200 rounded-card p-5 bg-brand-50">
+              <legend className="text-base font-bold text-brand-800 mb-3 flex items-center gap-2 px-1">
                 <span aria-hidden="true">📅</span>
                 Event Information
-                <span className="text-sm font-normal text-gold-600">(Required for media & streaming requests)</span>
+                <span className="text-sm font-normal text-brand-600">(Required for media & streaming requests)</span>
               </legend>
               <div className="space-y-4">
                 <Field
@@ -351,12 +351,12 @@ export function GuestTicketSubmitForm() {
 
           {/* ---- ARCHIVE LINK (optional) ---- */}
           <fieldset>
-            <legend className="text-base font-bold text-navy-950 mb-3 flex items-center gap-2">
+            <legend className="text-base font-bold text-brand-900 mb-3 flex items-center gap-2">
               <span className="h-6 w-6 rounded-full bg-slate-200 text-slate-600 text-xs flex items-center justify-center font-bold" aria-hidden="true">4</span>
               Reference Files
               <span className="text-sm font-normal text-slate-500">(Optional)</span>
             </legend>
-            <div className="space-y-4 p-4 bg-liturgical-cream rounded-btn border border-liturgical-muted">
+            <div className="space-y-4 p-4 bg-slate-50 rounded-btn border border-slate-200">
               <Alert variant="info">
                 <strong>No file uploads needed.</strong> Share a Google Drive, OneDrive, or Dropbox link instead.
               </Alert>
@@ -393,7 +393,7 @@ export function GuestTicketSubmitForm() {
           <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-liturgical-muted">
             <Button
               type="submit"
-              variant="gold"
+              variant="primary"
               size="lg"
               loading={isSubmitting}
               fullWidth

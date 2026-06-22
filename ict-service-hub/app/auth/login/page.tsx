@@ -77,7 +77,7 @@ function LoginForm() {
         </Field>
 
         <div className="flex justify-end">
-          <Link href="/auth/forgot-password" prefetch={false} className="text-sm text-gold-600 hover:text-gold-700 font-medium">
+          <Link href="/auth/forgot-password" prefetch={false} className="text-sm text-brand-600 hover:text-brand-700 font-medium">
             Forgot password?
           </Link>
         </div>
@@ -89,7 +89,7 @@ function LoginForm() {
 
       <p className="text-center text-sm text-slate-500 mt-6">
         Don&apos;t have an account?{' '}
-        <Link href="/auth/signup" prefetch={false} className="text-gold-600 hover:text-gold-700 font-semibold">
+        <Link href="/auth/signup" prefetch={false} className="text-brand-600 hover:text-brand-700 font-semibold">
           Sign up here
         </Link>
       </p>
@@ -104,8 +104,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md pt-24 pb-12">
         {/* Header */}
         <div className="text-center mb-8">
-          <p className="text-gold-600 font-bold text-xs tracking-widest uppercase mb-1">Diocese of Kalookan</p>
-          <h1 className="font-display text-3xl font-bold text-navy-950">ICT Service Hub</h1>
+          <p className="text-brand-600 font-bold text-xs tracking-widest uppercase mb-1">Diocese of Kalookan</p>
+          <h1 className="font-display text-3xl font-bold text-brand-900">ICT Service Hub</h1>
           <p className="text-slate-500 mt-2">Sign in to access the portal</p>
         </div>
 
