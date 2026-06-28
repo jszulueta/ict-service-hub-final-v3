@@ -186,11 +186,11 @@ export default function GuestTrackTicket() {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Subject</h3>
-                  <p className="text-lg font-medium text-slate-900">{ticketResult.ticket.title}</p>
+                  <p className="text-lg font-medium text-slate-900 break-words">{ticketResult.ticket.title}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Description</h3>
-                  <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{ticketResult.ticket.description}</p>
+                  <p className="text-slate-700 whitespace-pre-wrap break-words leading-relaxed">{ticketResult.ticket.description}</p>
                 </div>
                 
                 {ticketResult.ticket.resolution_notes && (
@@ -229,7 +229,7 @@ export default function GuestTrackTicket() {
                             {new Date(comment.created_at).toLocaleString()}
                           </span>
                         </div>
-                        <p className={`text-slate-700 whitespace-pre-wrap text-sm ${comment.author ? '' : 'text-right'}`}>{comment.body}</p>
+                        <p className={`text-slate-700 whitespace-pre-wrap break-words text-sm ${comment.author ? '' : 'text-right'}`}>{comment.body}</p>
                       </div>
                     </div>
                   ))

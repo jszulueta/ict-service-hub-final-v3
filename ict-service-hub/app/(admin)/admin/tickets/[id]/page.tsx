@@ -76,8 +76,8 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">🚫 Spam Flagged</span>
                 )}
               </div>
-              <h1 className="text-2xl font-bold text-slate-900 mb-4">{ticket.title}</h1>
-              <div className="bg-slate-50 rounded-lg p-4 text-slate-700 whitespace-pre-wrap leading-relaxed">
+              <h1 className="text-2xl font-bold text-slate-900 mb-4 break-words">{ticket.title}</h1>
+              <div className="bg-slate-50 rounded-lg p-4 text-slate-700 whitespace-pre-wrap break-words leading-relaxed">
                 {ticket.description}
               </div>
             </div>
@@ -142,7 +142,7 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
                         {new Date(c.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <p className="text-slate-700 text-sm whitespace-pre-wrap">{c.body}</p>
+                    <p className="text-slate-700 text-sm whitespace-pre-wrap break-words">{c.body}</p>
                   </div>
                 ))}
               </div>

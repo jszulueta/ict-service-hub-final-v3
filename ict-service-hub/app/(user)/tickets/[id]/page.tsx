@@ -99,14 +99,14 @@ export default async function TicketDetailPage({
           {/* Main */}
           <div className="lg:col-span-2 space-y-5">
             <div className="bg-white rounded-card border border-liturgical-muted shadow-card p-6">
-              <h2 className="font-bold text-xl text-navy-950 mb-2">{t.title}</h2>
+              <h2 className="font-bold text-xl text-navy-950 mb-2 break-words">{t.title}</h2>
 
               <div className="flex flex-wrap gap-2 mb-4">
                 <StatusBadge status={t.status} />
                 <PriorityBadge priority={t.priority} />
                 <CategoryBadge category={t.category} />
               </div>
-              <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{t.description}</p>
+              <p className="text-slate-700 whitespace-pre-wrap break-words leading-relaxed">{t.description}</p>
             </div>
 
             {/* Event details */}
@@ -176,7 +176,7 @@ export default async function TicketDetailPage({
                         </span>
                       </div>
 
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">
                         {c.body}
                       </p>
                     </div>
