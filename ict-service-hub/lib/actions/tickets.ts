@@ -1,139 +1,35 @@
-// lib/actions/tickets.ts
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { headers } from 'next/headers'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/server'
 import { createTicketSchema, updateTicketSchema, createCommentSchema } from '@/lib/validations/schemas'
 import type { CreateTicketInput, UpdateTicketInput, CreateCommentInput } from '@/lib/validations/schemas'
-import type { Profile, Ticket, NotificationType } from '@/types/database'
+import { TicketService } from '@/lib/services/ticket.service'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/server'
+import { NotificationService } from '@/lib/services/notification.service'
 
 type ActionResult<T = void> =
   | { success: true; data?: T; message?: string }
   | { success: false; error: string }
 
-async function getAuthenticatedUser() {
-  const supabase = await createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized: No active session.')
-
-  const { data } = await supabase.from('profiles')
-    .select('id, email, full_name, role, is_active, is_suspended')
-    .eq('id', user.id)
-    .single()
-
-  const profile = data as Pick<Profile, 'id' | 'email' | 'full_name' | 'role' | 'is_active' | 'is_suspended'> | null
-
-  if (!profile || !profile.is_active || profile.is_suspended) {
-    throw new Error('Unauthorized: Account is inactive or suspended.')
-  }
-
-  return { user, profile, supabase }
-}
-
-async function getAdminUser() {
-  const { user, profile, supabase } = await getAuthenticatedUser()
-  if (!['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)) {
-    throw new Error('Forbidden: Insufficient permissions.')
-  }
-  return { user, profile, supabase }
-}
-
-async function getClientIP(): Promise<string> {
-  const hdrs = await headers()
-  return hdrs.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
-}
-
-// ── createTicket ─────────────────────────────────────────────────────────────
 export async function createTicket(
   rawInput: CreateTicketInput
 ): Promise<ActionResult<{ ticketId: string; ticketNumber: string }>> {
   try {
-    const { user, profile, supabase } = await getAuthenticatedUser()
-    const ip = await getClientIP()
+    const { user } = await TicketService.getAuthenticatedUser()
+    const ip = await TicketService.getClientIP()
 
     const parsed = createTicketSchema.safeParse(rawInput)
     if (!parsed.success) {
       return { success: false, error: parsed.error.errors[0]?.message || 'Validation failed.' }
     }
 
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count: recentCount } = await (supabase.from('tickets') as any)
-      .select('id', { count: 'exact', head: true })
-      .eq('requester_id', user.id)
-      .gte('created_at', oneHourAgo)
-
-    if ((recentCount || 0) >= 10) {
-      return { success: false, error: 'You have submitted too many requests in the past hour. Please wait before submitting again.' }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: ticketData, error: insertError } = await (supabase.from('tickets') as any)
-      .insert({
-        requester_id:          user.id,
-        title:                 parsed.data.title,
-        description:           parsed.data.description,
-        category:              parsed.data.category,
-        priority:              parsed.data.priority,
-        event_name:            parsed.data.event_name     || null,
-        event_date:            parsed.data.event_date     || null,
-        event_location:        parsed.data.event_location || null,
-        event_notes:           parsed.data.event_notes    || null,
-        external_archive_link: parsed.data.external_archive_link || null,
-        archive_description:   parsed.data.archive_description   || null,
-        ip_address:            ip,
-        status:                'pending',
-      })
-      .select('id, ticket_number')
-      .single()
-
-    if (insertError) {
-      console.error('[createTicket] Insert error:', insertError.message, insertError.details, insertError.hint)
-      return { success: false, error: `Database error: ${insertError.message}` }
-    }
-
-    const ticket = ticketData as Pick<Ticket, 'id' | 'ticket_number'> | null
-    if (!ticket) {
-      return { success: false, error: 'Ticket was not created. Please try again.' }
-    }
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from('notifications') as any).insert({
-        user_id:   user.id,
-        ticket_id: ticket.id,
-        type:      'ticket_created',
-        title:     'Ticket Submitted',
-        message:   `Your request "${parsed.data.title}" has been submitted (${ticket.ticket_number}).`,
-      })
-    } catch (notifErr) {
-      console.error('[createTicket] Notification error:', notifErr)
-    }
-
-    try {
-      const adminClient = createSupabaseAdminClient()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (adminClient.from('audit_logs') as any).insert({
-        actor_id:    user.id,
-        actor_email: user.email,
-        action:      'ticket_created',
-        resource:    'ticket',
-        resource_id: ticket.id,
-        new_values:  { ticket_number: ticket.ticket_number, category: parsed.data.category },
-        ip_address:  ip,
-      })
-    } catch (auditErr) {
-      console.error('[createTicket] Audit log error:', auditErr)
-    }
-
-    // 📬 RESEND EMAIL DISPATCH SYSTEM HAS BEEN DECOMMISSIONED & COMPLETELY BYPASSED CLEARLY HERE
-
-    // Safely restored cache updates since top-level runtime dependency conflicts are cleared out
-    revalidatePath('/tickets')
+    const result = await TicketService.create(parsed.data, user, ip)
     
-    return { success: true, data: { ticketId: ticket.id, ticketNumber: ticket.ticket_number! } }
+    if (result.success) {
+      revalidatePath('/tickets')
+    }
 
+    return result
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unexpected error.'
     console.error('[createTicket] Caught error:', msg)
@@ -141,135 +37,53 @@ export async function createTicket(
   }
 }
 
-// ── updateTicket ──────────────────────────────────────────────────────────────
 export async function updateTicket(
   ticketId: string,
   rawInput: UpdateTicketInput
 ): Promise<ActionResult> {
   try {
-    const { user } = await getAdminUser()
-    const ip = await getClientIP()
+    const { user } = await TicketService.getAdminUser()
+    const ip = await TicketService.getClientIP()
 
     const parsed = updateTicketSchema.safeParse(rawInput)
     if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message || 'Validation failed.' }
 
-    const supabase = await createSupabaseServerClient()
+    const result = await TicketService.update(ticketId, parsed.data, user, ip)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingData } = await (supabase.from('tickets') as any)
-      .select('id, status, assigned_to, requester_id, ticket_number, resolved_at, closed_at')
-      .eq('id', ticketId)
-      .single()
-
-    const existing = existingData as Pick<Ticket, 'id' | 'status' | 'assigned_to' | 'requester_id' | 'ticket_number' | 'resolved_at' | 'closed_at'> | null
-    if (!existing) return { success: false, error: 'Ticket not found.' }
-
-    // Strip undefined values
-    const updateData: Partial<Ticket> = Object.fromEntries(
-      Object.entries(parsed.data).filter(([, v]) => v !== undefined)
-    )
-    if (parsed.data.status === 'resolved' && !existing.resolved_at) updateData.resolved_at = new Date().toISOString()
-    if (parsed.data.status === 'closed'   && !existing.closed_at)   updateData.closed_at   = new Date().toISOString()
-
-    const updateAdminClient = createSupabaseAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (updateAdminClient.from('tickets') as any).update(updateData).eq('id', ticketId)
-    if (error) {
-      console.error('[updateTicket] Update error:', error.message, error.details, error.hint)
-      return { success: false, error: 'Failed to update ticket.' }
+    if (result.success) {
+      revalidatePath('/admin/tickets')
+      revalidatePath(`/admin/tickets/${ticketId}`)
     }
 
-    try {
-      const adminClient = createSupabaseAdminClient()
-      if (parsed.data.status && parsed.data.status !== existing.status) {
-        const statusLabels: Record<string, string> = {
-          pending:     'Pending',
-          open:        'Open',
-          in_progress: 'In Progress',
-          on_hold:     'On Hold',
-          resolved:    'Resolved',
-          closed:      'Closed',
-        }
-        const statusLabel = statusLabels[parsed.data.status] ?? parsed.data.status
-
-        const notifType: NotificationType =
-          parsed.data.status === 'resolved' ? 'ticket_resolved' :
-          parsed.data.status === 'closed'   ? 'ticket_closed'   :
-          parsed.data.status === 'open'     ? 'status_changed'  : // reopened
-          'ticket_updated'
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (adminClient.from('notifications') as any).insert({
-          user_id:   existing.requester_id,
-          ticket_id: ticketId,
-          type:      notifType,
-          title:     'Ticket Status Updated',
-          message:   `Your ticket ${existing.ticket_number} status has been updated to "${statusLabel}".`,
-        })
-      }
-
-      if (
-        parsed.data.assigned_to !== undefined &&
-        parsed.data.assigned_to !== existing.assigned_to &&
-        parsed.data.assigned_to !== null
-      ) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (adminClient.from('notifications') as any).insert({
-          user_id:   existing.requester_id,
-          ticket_id: ticketId,
-          type:      'ticket_assigned',
-          title:     'Ticket Assigned',
-          message:   `Your ticket ${existing.ticket_number} has been assigned to a technician and is being reviewed.`,
-        })
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (adminClient.from('audit_logs') as any).insert({
-        actor_id:    user.id,
-        actor_email: user.email,
-        action:      parsed.data.status !== existing.status ? 'status_changed' : 'ticket_updated',
-        resource:    'ticket',
-        resource_id: ticketId,
-        old_values:  { status: existing.status, assigned_to: existing.assigned_to },
-        new_values:  parsed.data,
-        ip_address:  ip,
-      })
-    } catch (sideErr) {
-      console.error('[updateTicket] Side effect error:', sideErr)
-    }
-
-    revalidatePath('/admin/tickets')
-    revalidatePath(`/admin/tickets/${ticketId}`)
-    return { success: true, message: 'Ticket updated successfully.' }
+    return result
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unexpected error.' }
   }
 }
 
-// ── updateArchiveLink ─────────────────────────────────────────────────────────
 export async function updateArchiveLink(
   ticketId: string,
   link: string,
   description: string
 ): Promise<ActionResult> {
   try {
-    const { user, profile, supabase } = await getAuthenticatedUser()
+    const { user, profile, supabase } = await TicketService.getAuthenticatedUser()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // @ts-ignore
     const { data: ticketData } = await (supabase.from('tickets') as any)
       .select('requester_id')
       .eq('id', ticketId)
       .single()
 
-    const ticket = ticketData as Pick<Ticket, 'requester_id'> | null
+    const ticket = ticketData as any
     const isOwner = ticket?.requester_id === user.id
     const isStaff = ['ict_staff', 'ict_admin', 'super_admin'].includes(profile.role)
 
     if (!isOwner && !isStaff) return { success: false, error: 'You do not have permission to update this ticket.' }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // @ts-ignore
     const { error } = await (supabase.from('tickets') as any)
-      .update({ external_archive_link: link || null, archive_description: description || null })
+      .update({ external_archive_link: link || null, archive_description: description || null } )
       .eq('id', ticketId)
 
     if (error) return { success: false, error: 'Failed to update archive link.' }
@@ -285,7 +99,7 @@ export async function addComment(
   rawInput: CreateCommentInput
 ): Promise<ActionResult<{ commentId: string }>> {
   try {
-    const { user, profile, supabase } = await getAuthenticatedUser()
+    const { user, profile, supabase } = await TicketService.getAuthenticatedUser()
 
     const parsed = createCommentSchema.safeParse(rawInput)
     if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message || 'Validation failed.' }
@@ -294,15 +108,15 @@ export async function addComment(
       return { success: false, error: 'Only ICT staff can post internal notes.' }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // @ts-ignore
     const { data: ticketData } = await (supabase.from('tickets') as any)
       .select('requester_id, ticket_number')
       .eq('id', parsed.data.ticket_id)
       .single()
 
-    const ticketForComment = ticketData as Pick<Ticket, 'requester_id' | 'ticket_number'> | null
+    const ticketForComment = ticketData as any
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // @ts-ignore
     const { data: commentData, error } = await (supabase.from('comments') as any)
       .insert({
         ticket_id:   parsed.data.ticket_id,
@@ -321,11 +135,9 @@ export async function addComment(
     const commentAuthorIsRequester = ticketForComment?.requester_id === user.id
 
     if (isPublicStaffComment && ticketForComment && !commentAuthorIsRequester) {
-      const adminClient = createSupabaseAdminClient()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (adminClient.from('notifications') as any).insert({
-        user_id:   ticketForComment.requester_id,
-        ticket_id: parsed.data.ticket_id,
+      await NotificationService.sendNotification({
+        userId:   ticketForComment.requester_id,
+        ticketId: parsed.data.ticket_id,
         type:      'comment_added',
         title:     'New Comment on Your Ticket',
         message:   `The ICT team added a comment on ticket ${ticketForComment.ticket_number}.`,
@@ -340,24 +152,23 @@ export async function addComment(
   }
 }
 
-// ── recordUsageSnapshot ───────────────────────────────────────────────────────
 export async function recordUsageSnapshot(): Promise<ActionResult> {
   try {
-    await getAdminUser()
+    await TicketService.getAdminUser()
     const adminClient = createSupabaseAdminClient()
 
     const [tickets, users, comments, notifs] = await Promise.all([
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (adminClient.from('tickets') as any).select('id', { count: 'exact', head: true }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (adminClient.from('profiles') as any).select('id', { count: 'exact', head: true }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (adminClient.from('comments') as any).select('id', { count: 'exact', head: true }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (adminClient.from('notifications') as any).select('id', { count: 'exact', head: true }),
+      // @ts-ignore
+      adminClient.from('tickets').select('id', { count: 'exact', head: true }),
+      // @ts-ignore
+      adminClient.from('profiles').select('id', { count: 'exact', head: true }),
+      // @ts-ignore
+      adminClient.from('comments').select('id', { count: 'exact', head: true }),
+      // @ts-ignore
+      adminClient.from('notifications').select('id', { count: 'exact', head: true }),
     ])
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // @ts-ignore
     await (adminClient.from('usage_snapshots') as any).upsert({
       snapshot_date:  new Date().toISOString().split('T')[0],
       total_tickets:  tickets.count  || 0,

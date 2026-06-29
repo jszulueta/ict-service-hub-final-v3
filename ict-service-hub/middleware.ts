@@ -2,6 +2,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { RateLimitService } from '@/lib/services/rate-limit.service'
 
 // ── Route configuration ──────────────────────────────────────────────────────
 
@@ -19,53 +20,11 @@ const PUBLIC_ROUTES = [
 
 const ADMIN_ROLES = ['ict_staff', 'ict_admin', 'super_admin']
 
-// ── In-memory rate limiter ───────────────────────────────────────────────────
-
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
-
-function getRateLimitKey(req: NextRequest): string {
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip') ||
-    '127.0.0.1'
-  return `rl:${ip}`
-}
-
-function checkRateLimit(
-  key: string,
-  limit = 60,
-  windowMs = 60_000
-): { allowed: boolean; remaining: number; resetAt: number } {
-  const now = Date.now()
-  const entry = rateLimitStore.get(key)
-
-  if (!entry || now > entry.resetAt) {
-    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs })
-    return { allowed: true, remaining: limit - 1, resetAt: now + windowMs }
-  }
-
-  if (entry.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: entry.resetAt }
-  }
-
-  entry.count++
-  return { allowed: true, remaining: limit - entry.count, resetAt: entry.resetAt }
-}
-
-function pruneRateLimitStore() {
-  const now = Date.now()
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (now > entry.resetAt) rateLimitStore.delete(key)
-  }
-}
-
 // ── middleware ───────────────────────────────────────────────────────────────
 
 export async function middleware(request: NextRequest) {
   try {
     const { pathname, searchParams } = request.nextUrl
-
-    if (Math.random() < 0.01) pruneRateLimitStore()
 
     const isPrefetch =
       request.headers.get('purpose') === 'prefetch' ||
@@ -78,25 +37,24 @@ export async function middleware(request: NextRequest) {
 
     if (!isInternal) {
       const isAuthRoute = pathname.startsWith('/auth')
-      const rateLimitKey = getRateLimitKey(request)
       const limit = isAuthRoute ? 60 : 300
 
-      const { allowed, resetAt } = checkRateLimit(rateLimitKey, limit)
+      const rateLimitResult = await RateLimitService.checkRateLimit(request, isAuthRoute)
 
-      if (!allowed) {
+      if (!rateLimitResult.success) {
         return new NextResponse(
           JSON.stringify({
             error: 'Too many requests. Please wait before trying again.',
-            retryAfter: Math.ceil((resetAt - Date.now()) / 1000),
+            retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000),
           }),
           {
             status: 429,
             headers: {
               'Content-Type': 'application/json',
-              'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)),
+              'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)),
               'X-RateLimit-Limit': String(limit),
               'X-RateLimit-Remaining': '0',
-              'X-RateLimit-Reset': String(Math.ceil(resetAt / 1000)),
+              'X-RateLimit-Reset': String(Math.ceil(rateLimitResult.reset / 1000)),
             },
           }
         )
