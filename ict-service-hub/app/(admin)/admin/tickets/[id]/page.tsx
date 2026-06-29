@@ -27,9 +27,12 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
   if (!ticket) notFound()
 
   // Requester info
-  const { data: requesterData } = await supabase
-    .from('profiles').select('full_name, email, department, parish_office').eq('id', ticket.requester_id).single()
-  const requester = requesterData as Pick<Profile, 'full_name' | 'email' | 'department' | 'parish_office'> | null
+  let requester = null
+  if (ticket.requester_id) {
+    const { data: requesterData } = await supabase
+      .from('profiles').select('full_name, email, department, parish_office').eq('id', ticket.requester_id).single()
+    requester = requesterData as Pick<Profile, 'full_name' | 'email' | 'department' | 'parish_office'> | null
+  }
 
   // All staff for assignment dropdown
   const { data: staffData } = await supabase
@@ -181,7 +184,7 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
             </div>
 
             {/* Requester info */}
-            {requester && (
+            {requester ? (
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
                 <h3 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wide">Requester</h3>
                 <dl className="space-y-2 text-sm">
@@ -191,7 +194,16 @@ export default async function AdminTicketDetailPage({ params }: { params: Promis
                   {requester.parish_office && <div><dt className="text-slate-400 text-xs">Parish/Office</dt><dd className="text-slate-700">{requester.parish_office}</dd></div>}
                 </dl>
               </div>
-            )}
+            ) : ticket.guest_name ? (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+                <h3 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wide">Requester (Guest)</h3>
+                <dl className="space-y-2 text-sm">
+                  <div><dt className="text-slate-400 text-xs">Name</dt><dd className="font-medium text-slate-800">{ticket.guest_name}</dd></div>
+                  {ticket.guest_email && <div><dt className="text-slate-400 text-xs">Email</dt><dd className="text-slate-700 break-all">{ticket.guest_email}</dd></div>}
+                  {ticket.guest_phone && <div><dt className="text-slate-400 text-xs">Phone</dt><dd className="text-slate-700">{ticket.guest_phone}</dd></div>}
+                </dl>
+              </div>
+            ) : null}
 
             {/* Status history */}
             {historyData && historyData.length > 0 && (

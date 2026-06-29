@@ -108,11 +108,10 @@ export const TicketService = {
     if (parsedData.status === 'resolved' && !existing.resolved_at) updateData.resolved_at = new Date().toISOString()
     if (parsedData.status === 'closed'   && !existing.closed_at)   updateData.closed_at   = new Date().toISOString()
 
-    // Use regular client if not an admin, we shouldn't use admin client to bypass RLS entirely unless we need to.
-    // Actually, staff updating any ticket relies on staff policy, so we should just use the regular supabase client since it has RLS for staff!
     const { error } = await (supabase.from('tickets') as any).update(updateData).eq('id', ticketId)
     if (error) {
-      return { success: false, error: 'Failed to update ticket.' }
+      console.error('[TicketService.update] Supabase error:', error)
+      return { success: false, error: `Failed to update ticket: ${error.message || 'Unknown database error'}` }
     }
 
     if (parsedData.status && parsedData.status !== existing.status) {
@@ -132,23 +131,27 @@ export const TicketService = {
         parsedData.status === 'open'     ? 'status_changed'  : 
         'ticket_updated'
 
-      await NotificationService.sendNotification({
-        userId: existing.requester_id,
-        ticketId: ticketId,
-        type: notifType,
-        title: 'Ticket Status Updated',
-        message: `Your ticket ${existing.ticket_number} status has been updated to "${statusLabel}".`
-      })
+      if (existing.requester_id) {
+        await NotificationService.sendNotification({
+          userId: existing.requester_id,
+          ticketId: ticketId,
+          type: notifType,
+          title: 'Ticket Status Updated',
+          message: `Your ticket ${existing.ticket_number} status has been updated to "${statusLabel}".`
+        })
+      }
     }
 
     if (parsedData.assigned_to !== undefined && parsedData.assigned_to !== existing.assigned_to && parsedData.assigned_to !== null) {
-      await NotificationService.sendNotification({
-        userId: existing.requester_id,
-        ticketId: ticketId,
-        type: 'ticket_assigned',
-        title: 'Ticket Assigned',
-        message: `Your ticket ${existing.ticket_number} has been assigned to a technician and is being reviewed.`
-      })
+      if (existing.requester_id) {
+        await NotificationService.sendNotification({
+          userId: existing.requester_id,
+          ticketId: ticketId,
+          type: 'ticket_assigned',
+          title: 'Ticket Assigned',
+          message: `Your ticket ${existing.ticket_number} has been assigned to a technician and is being reviewed.`
+        })
+      }
     }
 
     await AuditService.logAction({

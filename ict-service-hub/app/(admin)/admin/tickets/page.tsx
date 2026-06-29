@@ -29,7 +29,7 @@ export default async function AdminTicketsPage({
   // Build query with filters
   let query = supabase
     .from('tickets')
-    .select('id, ticket_number, title, category, status, priority, created_at, assigned_to, requester_id')
+    .select('id, ticket_number, title, category, status, priority, created_at, assigned_to, requester_id, guest_name')
     .order('created_at', { ascending: false })
 
   if (params.status)   query = query.eq('status', params.status)
@@ -39,7 +39,7 @@ export default async function AdminTicketsPage({
   if (params.q) query = query.ilike('title', `%${params.q}%`)
 
   const { data: ticketsData } = await query.limit(100)
-  const tickets = (ticketsData || []) as Ticket[]
+  const tickets = (ticketsData || []) as any[]
 
   // Fetch all staff for display
   const { data: staffData } = await supabase
@@ -50,7 +50,7 @@ export default async function AdminTicketsPage({
   const staffMap = Object.fromEntries(staff.map((s) => [s.id, s.full_name]))
 
   // Fetch requesters for display
-  const requesterIds = [...new Set(tickets.map((t) => t.requester_id))]
+  const requesterIds = [...new Set(tickets.map((t) => t.requester_id).filter(Boolean))]
   let requesterMap: Record<string, string> = {}
   if (requesterIds.length > 0) {
     const { data: reqData } = await supabase
@@ -134,7 +134,9 @@ export default async function AdminTicketsPage({
                       <Link href={`/admin/tickets/${ticket.id}`} className="font-medium text-slate-900 hover:text-amber-600 transition-colors truncate block">{ticket.title}</Link>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap"><CategoryBadge category={ticket.category} /></td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{requesterMap[ticket.requester_id] || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                      {ticket.requester_id ? (requesterMap[ticket.requester_id] || '—') : (ticket.guest_name ? `${ticket.guest_name} (Guest)` : '—')}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {ticket.assigned_to
                         ? <span className="text-slate-700">{staffMap[ticket.assigned_to] || '—'}</span>

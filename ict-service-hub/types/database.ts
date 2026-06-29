@@ -36,7 +36,10 @@ export interface Profile {
 export interface Ticket {
   id: string
   ticket_number: string
-  requester_id: string
+  requester_id: string | null
+  guest_name: string | null
+  guest_email: string | null
+  guest_phone: string | null
   assigned_to: string | null
   title: string
   description: string

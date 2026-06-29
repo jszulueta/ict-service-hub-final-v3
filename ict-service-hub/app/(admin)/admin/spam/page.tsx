@@ -22,7 +22,7 @@ export default async function SpamPage() {
   // Flagged tickets
   const { data: spamData } = await adminClient
     .from('tickets')
-    .select('id, ticket_number, title, category, created_at, requester_id, spam_reason, ip_address')
+    .select('id, ticket_number, title, category, created_at, requester_id, spam_reason, ip_address, guest_name')
     .eq('is_spam_flagged', true)
     .order('created_at', { ascending: false })
   const spamTickets = (spamData || []) as Ticket[]
@@ -36,7 +36,7 @@ export default async function SpamPage() {
     .limit(50)
 
   // Requester names
-  const requesterIds = [...new Set(spamTickets.map((t) => t.requester_id))]
+  const requesterIds = [...new Set(spamTickets.map((t) => t.requester_id).filter(Boolean))]
   let requesterMap: Record<string, string> = {}
   if (requesterIds.length > 0) {
     const { data: rData } = await adminClient.from('profiles').select('id, full_name, email').in('id', requesterIds)
@@ -104,7 +104,9 @@ export default async function SpamPage() {
                   <tr key={ticket.id} className="hover:bg-red-50 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs font-bold text-slate-700">{ticket.ticket_number}</td>
                     <td className="px-4 py-3 text-slate-700 max-w-[160px] truncate">{ticket.title}</td>
-                    <td className="px-4 py-3 text-slate-600 text-xs">{requesterMap[ticket.requester_id] || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600 text-xs">
+                      {ticket.requester_id ? (requesterMap[ticket.requester_id] || '—') : (ticket.guest_name ? `${ticket.guest_name} (Guest)` : '—')}
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{ticket.ip_address || '—'}</td>
                     <td className="px-4 py-3 text-xs text-red-600">{ticket.spam_reason || '—'}</td>
                     <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">

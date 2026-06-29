@@ -135,13 +135,15 @@ export async function addComment(
     const commentAuthorIsRequester = ticketForComment?.requester_id === user.id
 
     if (isPublicStaffComment && ticketForComment && !commentAuthorIsRequester) {
-      await NotificationService.sendNotification({
-        userId:   ticketForComment.requester_id,
-        ticketId: parsed.data.ticket_id,
-        type:      'comment_added',
-        title:     'New Comment on Your Ticket',
-        message:   `The ICT team added a comment on ticket ${ticketForComment.ticket_number}.`,
-      })
+      if (ticketForComment.requester_id) {
+        await NotificationService.sendNotification({
+          userId:   ticketForComment.requester_id,
+          ticketId: parsed.data.ticket_id,
+          type:      'comment_added',
+          title:     'New Comment on Your Ticket',
+          message:   `The ICT team added a comment on ticket ${ticketForComment.ticket_number}.`,
+        })
+      }
     }
 
     revalidatePath(`/tickets/${parsed.data.ticket_id}`)
