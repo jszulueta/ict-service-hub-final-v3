@@ -59,25 +59,23 @@ ict-service-hub/
 │   │   │   └── users/              # User management
 │   │   └── layout.tsx              # Admin layout wrapper
 │   ├── api/                        # API routes
-│   │   ├── admin/
-│   │   │   └── users/              # User management API
-│   │   └── auth/
-│   │       └── signout/            # Signout API endpoint
+│   │   ├── admin/                  # Admin API endpoints
+│   │   ├── auth/                   # Authentication API endpoints
+│   │   └── test-spam/              # Spam testing endpoint
 │   ├── auth/                       # Authentication routes
-│   │   ├── callback/route.ts       # Supabase OAuth callback
-│   │   ├── forgot-password/page.tsx # Forgot password page
-│   │   ├── login/page.tsx          # Login page
-│   │   ├── reset-password/page.tsx # Reset password page
-│   │   ├── signup/page.tsx         # Signup page
-│   │   └── suspended/page.tsx      # Suspended account page
+│   │   ├── callback/               # Supabase OAuth callback
+│   │   ├── forgot-password/        # Forgot password page
+│   │   ├── login/                  # Login page
+│   │   ├── reset-password/         # Reset password page
+│   │   ├── signup/                 # Signup page
+│   │   └── suspended/              # Suspended account page
+│   ├── guest/                      # Guest portal routes
+│   │   ├── submit-ticket/          # Guest ticket submission
+│   │   └── track-ticket/           # Guest ticket tracking
 │   ├── (user)/                     # User portal routes (requesters)
-│   │   ├── dashboard/page.tsx      # User dashboard
-│   │   ├── layout.tsx              # User layout wrapper
-│   │   ├── notifications/page.tsx  # User notifications
-│   │   └── tickets/
-│   │       ├── [id]/               # Ticket detail
-│   │       ├── new/                # Submit new ticket
-│   │       └── page.tsx            # All my tickets
+│   │   ├── dashboard/              # User dashboard
+│   │   ├── notifications/          # User notifications
+│   │   └── tickets/                # Ticket management
 │   ├── globals.css                 # Global CSS styles
 │   ├── layout.tsx                  # Root layout
 │   └── page.tsx                    # Landing/redirect page
@@ -88,34 +86,46 @@ ict-service-hub/
 │   │   ├── TicketTable.tsx         # Admin ticket table
 │   │   ├── UsageMonitor.tsx        # System usage stats
 │   │   └── UserActions.tsx         # User administration controls
-│   ├── FetchInterceptor.tsx        # Global fetch interceptor
 │   ├── tickets/                    # Ticket-related components
-│   │   └── TicketSubmitForm.tsx    # Form to submit tickets
+│   │   ├── GuestTicketSubmitForm.tsx # Form to submit guest tickets
+│   │   └── TicketSubmitForm.tsx    # Form to submit user tickets
 │   ├── ui/                         # Base UI components
+│   │   ├── GuestNavbar.tsx         # Guest application navigation bar
 │   │   ├── index.tsx               # Shared accessible components
 │   │   └── navbar.tsx              # Application navigation bar
-│   └── user/                       # User-specific components
-│       └── UserCommentBox.tsx      # Ticket comment input
+│   ├── user/                       # User-specific components
+│   │   └── UserCommentBox.tsx      # Ticket comment input
+│   └── FetchInterceptor.tsx        # Global fetch interceptor
 │
 ├── lib/                            # Core logic and utilities
-│   ├── actions/
+│   ├── actions/                    # Server actions
 │   │   └── tickets.ts              # Server actions for tickets
-│   ├── email/
-│   │   └── resend.ts               # Email templates
-│   ├── supabase/
+│   ├── email/                      # Email templates and logic
+│   │   └── resend.ts               # Resend setup
+│   ├── services/                   # Business logic services
+│   │   ├── audit.service.ts        # Audit logging service
+│   │   ├── notification.service.ts # Notification management service
+│   │   ├── rate-limit.service.ts   # Rate limiting service
+│   │   ├── spam.service.ts         # Spam detection service
+│   │   └── ticket.service.ts       # Ticket management service
+│   ├── supabase/                   # Supabase clients
 │   │   ├── client.ts               # Browser-side client
 │   │   └── server.ts               # Server-side client
-│   ├── utility/
-│   │   └── crypto.ts               # Utility functions for cryptography
-│   └── validations/
+│   ├── utility/                    # Utility functions
+│   │   └── crypto.ts               # Cryptography helpers
+│   └── validations/                # Zod validation schemas
 │       └── schemas.ts              # Zod schemas
+│
+├── scripts/                        # Utility scripts
+│   ├── clear-spam.ts               # Script to clear spam data
+│   └── simulate-spam.sh            # Script to simulate spam
+│
+├── supabase/                       # Supabase configuration
+│   └── schema.sql                  # Full DB schema + RLS
 │
 ├── types/                          # Type definitions
 │   ├── css.d.ts                    # CSS Module typings
 │   └── database.ts                 # TypeScript types
-│
-├── supabase/                       # Supabase configuration
-│   └── schema.sql                  # Full DB schema + RLS
 │
 ├── middleware.ts                   # RBAC + rate limiting
 ├── tailwind.config.ts              # Tailwind CSS configuration
