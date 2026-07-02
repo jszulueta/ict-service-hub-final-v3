@@ -1,8 +1,8 @@
 // app/auth/suspended/page.tsx
 'use client'
+
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 export default function SuspendedPage() {
   const [signingOut, setSigningOut] = useState(true)
@@ -12,8 +12,10 @@ export default function SuspendedPage() {
 
     async function signOutSuspendedUser() {
       try {
-        const supabase = createSupabaseBrowserClient()
-        await supabase.auth.signOut()
+        await fetch('/api/auth/signout', {
+          method: 'POST',
+          credentials: 'include',
+        })
       } catch (err) {
         console.error('Error signing out suspended user:', err)
       } finally {
